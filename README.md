@@ -1,13 +1,13 @@
-# `stunt`
-**S**cenario da**T**abase **UN**packing u**T**ility
+# `unfold`
+**UN**packing **F**or scenari**O**-based **L**ca **D**atabases
 
-## What does `stunt` do?
+## What does `unfold` do?
 
 1. it unpacks data packages containing scenario data (modified exchange values as well as additional inventories),
 2. builds scenario-specific ecoinvent databases,
 3. and registers them into a `brightway` project.
 
-`stunt` is initially conceived to share `premise`-generated databases, without sharing the underlying data which is under restrictive licensing (i.e., ecoinvent).
+`unfold` is initially conceived to share `premise`-generated databases, without sharing the underlying data which is under restrictive licensing (i.e., ecoinvent).
 
 ## Limitations
 
@@ -16,6 +16,20 @@
 
 ## How to
 
+### Install
+
+```bash
+pip install unfold
+```
+
+### Use
+
+    import unfold
+    
+    u = Unfold('path/to/datapackage.zip')
+    u.unfold()
+    u.build()
+    u.write()
 
 ## Author
 
