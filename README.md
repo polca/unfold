@@ -18,22 +18,66 @@
 
 ### Install
 
-```bash
-pip install unfold
-```
+`unfold` is available on PyPI and can be installed with `pip`:
+
+    pip install unfold
+
 
 ### Use
 
-    import unfold
+#### fold
+
+``unfold`` can "fold" several brightway2 databases
+into a single data package. The data package is a zip file
+containing the differences of the databases in relation
+to a source database (including extra inventories), 
+as well as a metadata file that describes the databases 
+and their content.
+
+    from unfold import Fold
+    import bw2data
     
-    u = Unfold('path/to/datapackage.zip')
+    # name of the brightway project containing 
+    # both the source database and the databases to fold
+    bw2data.projects.set_current("some BW2 project")
+    
+    f = Fold()
+    f.fold()
+
+#### unfold
+
+``unfold`` can "unfold" a data package into one or several 
+brightway2 databases.
+
+    from unfold import Unfold
+    import bw2data
+    
+    # name of the brightway project containing 
+    # both the source database and the databases to unfold
+    bw2data.projects.set_current("some BW2 project")
+    
+    u = Unfold("a package name.zip")
     u.unfold()
-    u.build()
-    u.write()
+
+#### unfold a superstructure database (to be used with Activity Browser)
+
+``unfold`` can "unfold" a data package into a superstructure database
+that can be used with the Activity Browser.
+
+    from unfold import Unfold
+    import bw2data
+    
+    # name of the brightway project containing 
+    # both the source database and the databases to unfold
+    bw2data.projects.set_current("some BW2 project")
+    
+    u = Unfold("a package name.zip")
+    u.unfold(superstructure=True)
+
 
 ## Author
 
-[Romain Sacchi](romain.sacchi@psi.ch), PSI
+[Romain Sacchi](mailto:romain.sacchi@psi.ch), PSI
 
 ## License
 
