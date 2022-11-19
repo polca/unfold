@@ -5,3 +5,5 @@ bw2data
 wurst
 prettytable
 datapackage
+sparse
+scipy

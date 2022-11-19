@@ -255,3 +255,57 @@ def remove_categories_for_technosphere_flows(data):
                 if "categories" in y:
                     del y["categories"]
     return data
+
+def remove_unused_fields(data: list) -> list:
+    """
+    Remove fields wich have no values from each dataset in database.
+    :param data: database to check
+    :return: database with unused fields removed
+    """
+
+    for dataset in data:
+        for key in list(dataset.keys()):
+            if not dataset[key]:
+                del dataset[key]
+
+    return data
+
+def correct_fields_format(data: list, name: str) -> list:
+    """
+    Correct the format of some fields.
+    :param data: database to check
+    :return: database with corrected fields
+    """
+
+    for dataset in data:
+        if "parameters" in dataset:
+
+            if not isinstance(dataset.get("parameters", []), list):
+                dataset["parameters"] = [dataset["parameters"]]
+
+            if (
+                    dataset["parameters"] is None
+                    or dataset["parameters"] == {}
+                    or dataset["parameters"] == []
+                ):
+                del dataset["parameters"]
+
+            else:
+                new_parameters_list = []
+                for p in dataset["parameters"]:
+                    for k, v in p.items():
+                        new_parameters_list.append({"name": k, "amount": v})
+                dataset["parameters"] = new_parameters_list
+
+        if "categories" in dataset:
+            if dataset["categories"] is None:
+                del dataset["categories"]
+            elif not isinstance(dataset["categories"], tuple):
+                dataset["categories"] = tuple(dataset["categories"])
+            else:
+                pass
+
+        if not dataset.get("database"):
+            dataset["database"] = name
+
+    return data

@@ -1,0 +1,491 @@
+"""
+Contains the Stunt class, to extract datapackage files.
+"""
+
+from ast import literal_eval
+from datapackage import Package
+import pandas as pd
+from pathlib import Path
+from typing import Union, List
+from prettytable import PrettyTable
+from copy import deepcopy
+import bw2data, bw2io
+from wurst import extract_brightway2_databases, write_brightway2_database
+from wurst.linking import (
+    change_db_name,
+    check_duplicate_codes,
+    check_internal_linking,
+    link_internal,
+)
+from .utils import HiddenPrints
+import numpy as np
+
+from .data_cleaning import (
+    remove_missing_fields,
+    add_biosphere_links,
+    check_for_duplicates,
+    add_product_field_to_exchanges,
+    biosphere_dict,
+    remove_categories_for_technosphere_flows,
+    correct_fields_format,
+    remove_unused_fields,
+)
+from .export import UnfoldExporter
+
+
+class Unfold(object):
+    """Extracts datapackage files."""
+
+    def __init__(self, path: Union[str, Path]):
+        self.path = path
+        self.package = Package(self.path)
+        self.dependencies = self.package.descriptor["dependencies"]
+        self.scenarios = self.package.descriptor["scenarios"]
+        self.scenario_df = None
+        self.show_scenarios()
+        self.database = []
+        self.databases_to_export = {}
+        self.dependency_mapping = {}
+        self.factors = {}
+
+    def show_scenarios(self):
+        """Shows the scenarios."""
+        print("The data package contains the following scenarios:")
+        table = PrettyTable()
+        table.field_names = ["No.", "Scenario", "Description"]
+        for i, scenario in enumerate(self.package.descriptor["scenarios"]):
+            table.add_row([i, scenario["name"], scenario.get("description")])
+        print(table)
+        print("")
+        print("To unfold all scenarios, `unfold()`.")
+        print("To unfold a specific scenario, `unfold(scenarios=[1,])`.")
+
+    def check_dependencies(self, dependencies: dict):
+        """Checks the dependencies."""
+        # we need to check that the source database exists
+        # and that the scenarios are compatible with the source database
+
+        available_databases = list(bw2data.databases.keys())
+
+        dependencies = dependencies or []
+
+        if dependencies and all(
+            dependency in available_databases for dependency in dependencies.values()
+        ):
+            for database in self.dependencies:
+                database["source"] = dependencies[database["name"]]
+        else:
+            # ask the user to give names to the databases
+            print("The following databases are necessary to unfold the scenarios:")
+
+            table = PrettyTable()
+            table.field_names = ["No.", "Dependency", "System model", "Version"]
+
+            for db, database in enumerate(self.dependencies):
+                table.add_row(
+                    [
+                        db + 1,
+                        database["name"],
+                        database.get("system model", ""),
+                        database.get("version", ""),
+                    ]
+                )
+            print(table)
+            print("")
+
+            print("The following databases are available in your project:")
+
+            table = PrettyTable()
+            table.field_names = [
+                "No.",
+                "Database",
+            ]
+
+            for db, database in enumerate(available_databases):
+                table.add_row([db + 1, database])
+            print(table)
+            print("")
+
+            for db, database in enumerate(self.dependencies):
+                db_number = input(
+                    f"Indicate the database number for dependency {db + 1}: "
+                )
+                name = available_databases[int(db_number) - 1]
+                database["source"] = name
+
+    def build_mapping_for_dependencies(self, db):
+        """Builds a mapping for dependencies."""
+        self.dependency_mapping.update(
+            {
+                (
+                    a["name"],
+                    a.get("reference product"),
+                    a.get("location"),
+                    a.get("categories"),
+                ): (a["database"], a["code"])
+                for a in db
+            }
+        )
+
+    def extract_source_database(self):
+        """Extracts the source database."""
+        for dependency in self.dependencies:
+            db = extract_brightway2_databases(dependency["source"])
+
+            self.build_mapping_for_dependencies(db)
+            if dependency.get("type") == "source":
+                self.database.extend(db)
+
+    def clean_imported_inventory(self, data):
+        """Cleans the imported inventory."""
+        remove_missing_fields(data)
+        add_biosphere_links(data)
+        check_for_duplicates(self.database, data)
+        add_product_field_to_exchanges(data, self.database)
+        remove_categories_for_technosphere_flows(data)
+        return data
+
+    def extract_additional_inventories(self):
+        """Extracts additional inventories."""
+        with HiddenPrints():
+            i = bw2io.CSVImporter(self.package.get_resource("inventories").source)
+            i.apply_strategies()
+
+        i.data = self.clean_imported_inventory(i.data)
+        self.database.extend(i.data)
+        self.database = change_db_name(self.database, self.package.descriptor["name"])
+        self.build_mapping_for_dependencies(self.database)
+
+    def adjust_exchanges(self):
+        """Adjusts the exchanges."""
+
+        _ = lambda x: 1.0 if x == 0.0 else x
+
+        key_to_remove = [
+            "from activity name",
+            "from reference product",
+            "from location",
+            "from categories",
+            "from database",
+            "to activity name",
+            "to reference product",
+            "to location",
+            "to categories",
+            "to database",
+            "to key",
+            "from key",
+            "unit",
+            "flow type",
+        ]
+        self.factors = self.scenario_df.groupby("flow id").sum().to_dict("index")
+
+        for scenario, database in self.databases_to_export.items():
+            print(f"Creating database for scenario {scenario}...")
+            for ds in database:
+                for exc in ds["exchanges"]:
+                    if exc["type"] != "production":
+                        flow_id = (
+                            ds["name"],
+                            ds["reference product"],
+                            ds["location"],
+                            exc["name"],
+                            exc.get("product"),
+                            exc.get("location"),
+                            exc.get("categories"),
+                            exc["unit"],
+                            exc["type"],
+                        )
+                        if flow_id in self.factors:
+                            if scenario in self.factors[flow_id]:
+                                exc["amount"] = _(float(exc["amount"])) * float(
+                                    self.factors[flow_id][scenario]
+                                )
+                                del self.factors[flow_id][scenario]
+
+            # check if there are still factors to remove
+            for flow_id in self.factors:
+                if self.factors[flow_id].get(scenario):
+                    database = self.add_exchanges_to_database(
+                        database, flow_id, self.factors[flow_id][scenario]
+                    )
+                    del self.factors[flow_id][scenario]
+
+    def add_exchanges_to_database(self, database, flow_id, factor):
+        """
+        Add an exchange to `database`.
+        :param database: database to add an exchange to.
+        :param flow_id: id of the exchanges
+        :param factor: multiplication factor
+        :return: database with exchange added
+        """
+        for ds in database:
+            if (
+                ds["name"] == flow_id[0]
+                and ds["reference product"] == flow_id[1]
+                and ds["location"] == flow_id[2]
+            ):
+                exc = {
+                    "amount": float(factor),
+                    "type": flow_id[-1],
+                    "name": flow_id[3],
+                    "product": flow_id[4],
+                    "location": flow_id[5],
+                    "categories": flow_id[6],
+                    "unit": flow_id[7],
+                    "input": self.dependency_mapping.get(
+                        (flow_id[3], flow_id[4], flow_id[5], flow_id[6])
+                    ),
+                }
+
+                # name
+                # reference product
+                # location
+                # unit
+                # categories
+
+                ds["exchanges"].append(exc)
+                break
+
+        return database
+
+    def format_dataframe(
+        self, scenarios: List[int] = None, superstructure: bool = False
+    ):
+        """Formats the dataframe."""
+        scenarios = scenarios or list(range(len(self.scenarios)))
+        scenarios_to_keep = [self.scenarios[i]["name"] for i in scenarios]
+
+        if not superstructure:
+            self.databases_to_export = {
+                s: deepcopy(self.database) for s in scenarios_to_keep
+            }
+
+        scenarios_to_leave_out = list(
+            set([s["name"] for s in self.scenarios]) - set(scenarios_to_keep)
+        )
+        self.scenario_df = pd.DataFrame(
+            self.package.get_resource("scenario_data").read(keyed=True)
+        )
+        self.scenario_df = self.scenario_df.loc[
+            (self.scenario_df["flow type"] != "production")
+        ]
+        self.scenario_df = self.scenario_df.drop(scenarios_to_leave_out, axis=1)
+        self.scenario_df["from categories"] = self.scenario_df["from categories"].apply(
+            lambda x: literal_eval(str(x))
+        )
+        self.scenario_df["to categories"] = self.scenario_df["to categories"].apply(
+            lambda x: literal_eval(str(x))
+        )
+        self.scenario_df["from key"] = self.scenario_df["from key"].apply(
+            lambda x: literal_eval(str(x))
+        )
+        self.scenario_df["to key"] = self.scenario_df["to key"].apply(
+            lambda x: literal_eval(str(x))
+        )
+        self.scenario_df[scenarios_to_keep] = self.scenario_df[
+            scenarios_to_keep
+        ].astype(float)
+
+        self.scenario_df["flow id"] = list(
+            zip(
+                self.scenario_df["to activity name"],
+                self.scenario_df["to reference product"],
+                self.scenario_df["to location"],
+                self.scenario_df["from activity name"],
+                self.scenario_df["from reference product"],
+                self.scenario_df["from location"],
+                self.scenario_df["from categories"],
+                self.scenario_df["unit"],
+                self.scenario_df["flow type"],
+            )
+        )
+
+    def format_superstructure_dataframe(self, scenarios: List[int]):
+        """Formats the superstructure dataframe."""
+
+        self.format_dataframe(scenarios=scenarios, superstructure=True)
+        scenarios = [self.scenarios[i]["name"] for i in scenarios]
+
+        _ = lambda x: 1.0 if x == 0.0 else x
+
+        key_to_remove = [
+            "from activity name",
+            "from reference product",
+            "from location",
+            "from categories",
+            "from database",
+            "to activity name",
+            "to reference product",
+            "to location",
+            "to categories",
+            "to database",
+            "to key",
+            "from key",
+            "unit",
+            "flow type",
+        ]
+        self.factors = self.scenario_df.groupby("flow id").sum().to_dict("index")
+        existing_exchanges = []
+
+        for ds in self.database:
+            for exc in ds["exchanges"]:
+                if exc["type"] != "production":
+                    flow_id = (
+                        ds["name"],
+                        ds["reference product"],
+                        ds["location"],
+                        exc["name"],
+                        exc.get("product"),
+                        exc.get("location"),
+                        exc.get("categories"),
+                        exc["unit"],
+                        exc["type"],
+                    )
+
+                    if flow_id in self.factors:
+                        existing_exchanges.append(flow_id)
+                        for k, v in self.factors[flow_id].items():
+                            if v != 0.0:
+                                self.factors[flow_id][k] = float(v) * _(
+                                    float(exc["amount"])
+                                )
+
+        self.scenario_df = pd.DataFrame.from_dict(self.factors).T.reset_index()
+        self.scenario_df.columns = [
+            "to activity name",
+            "to reference product",
+            "to location",
+            "from activity name",
+            "from reference product",
+            "from location",
+            "from categories",
+            "unit",
+            "flow type",
+        ] + scenarios
+        self.scenario_df["to database"] = self.package.descriptor["name"]
+        self.scenario_df["to categories"] = None
+        self.scenario_df["to key"] = None
+        self.scenario_df["from key"] = None
+        self.scenario_df = self.scenario_df.replace({np.nan: None})
+
+        self.scenario_df.loc[:, "from key"] = self.scenario_df.apply(
+            lambda x: self.dependency_mapping.get(
+                (
+                    x["from activity name"],
+                    x["from reference product"],
+                    x["from location"],
+                    x["from categories"],
+                )
+            ),
+            axis=1,
+        )
+        self.scenario_df.loc[:, "to key"] = self.scenario_df.apply(
+            lambda x: self.dependency_mapping.get(
+                (
+                    x["to activity name"],
+                    x["to reference product"],
+                    x["to location"],
+                    x["to categories"],
+                )
+            ),
+            axis=1,
+        )
+
+        self.scenario_df.loc[
+            (self.scenario_df["flow type"] == "technosphere"), "from database"
+        ] = self.package.descriptor["name"]
+        self.scenario_df.loc[
+            (self.scenario_df["flow type"] == "biosphere"), "from database"
+        ] = "biosphere3"
+        self.scenario_df = self.scenario_df[
+            [
+                "from activity name",
+                "from reference product",
+                "from location",
+                "from categories",
+                "from database",
+                "from key",
+                "to activity name",
+                "to reference product",
+                "to location",
+                "to categories",
+                "to database",
+                "to key",
+                "flow type",
+            ]
+            + scenarios
+        ]
+
+        for flow_id in self.factors:
+            if flow_id not in existing_exchanges:
+                self.database = self.add_exchanges_to_database(
+                    self.database,
+                    flow_id,
+                    0.0,
+                )
+
+    def unfold(
+        self,
+        scenarios: List[int] = None,
+        dependencies: dict = None,
+        superstructure: bool = False,
+    ):
+        """Extracts specific scenarios."""
+
+        if not self.database:
+            self.check_dependencies(dependencies)
+            self.extract_source_database()
+            self.extract_additional_inventories()
+
+        if not superstructure:
+            self.format_dataframe(scenarios)
+            self.adjust_exchanges()
+        else:
+            print("Writing scenario difference file...")
+            self.format_superstructure_dataframe(scenarios)
+
+        self.write(superstructure=superstructure)
+
+    def write(self, superstructure: bool = False):
+        """Write the databases."""
+
+        if not superstructure:
+            for scenario, database in self.databases_to_export.items():
+                change_db_name(database, scenario)
+                link_internal(database)
+                check_internal_linking(database)
+                check_duplicate_codes(database)
+                correct_fields_format(database, scenario)
+                remove_unused_fields(database)
+                print(f"Writing database for scenario {scenario}...")
+                UnfoldExporter(scenario, database).write_database()
+
+        else:
+            try:
+                self.scenario_df.to_excel(
+                    f"{self.package.descriptor['name']}.xlsx", index=False
+                )
+            except ValueError:
+                # from https://stackoverflow.com/questions/66356152/splitting-a-dataframe-into-multiple-sheets
+                GROUP_LENGTH = 1000000  # set nr of rows to slice df
+                with pd.ExcelWriter(
+                    f"{self.package.descriptor['name']}.xlsx"
+                ) as writer:
+                    for i in range(0, len(self.scenario_df), GROUP_LENGTH):
+                        self.scenario_df[i : i + GROUP_LENGTH].to_excel(
+                            writer, sheet_name=f"Row {i}", index=False, header=True
+                        )
+
+            print(
+                f"Scenario difference file exported to {self.package.descriptor['name']}.xlsx!"
+            )
+            print(f"Writing superstructure database...")
+            change_db_name(self.database, self.package.descriptor["name"])
+            link_internal(self.database)
+            check_internal_linking(self.database)
+            check_duplicate_codes(self.database)
+            correct_fields_format(self.database, self.package.descriptor["name"])
+            remove_unused_fields(self.database)
+            UnfoldExporter(
+                self.package.descriptor["name"], self.database
+            ).write_database()
