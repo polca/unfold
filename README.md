@@ -1,13 +1,25 @@
 # `unfold`
-**UN**packing **F**or scenari**O**-based **L**ca **D**atabases
+**UNF**olding scenari**O**-based **L**ca **D**atabases
 
 ## What does `unfold` do?
 
-1. it unfolds data packages containing scenario data (modified exchange values as well as additional inventories),
-2. builds scenario-specific ecoinvent databases,
-3. and registers them into a `brightway` project.
+``unfold`` is a Python package that allows "packing" and "unpacking"
+LCA databases derived from a source database (e.g., ecoinvent) without
+explicitly referring to the data contained in the source database.
 
-`unfold` is initially conceived to share `premise`-generated databases, without sharing the underlying data which is under restrictive licensing (i.e., ecoinvent).
+![flow diagram](assets/flow_diagram.png)
+
+The purpose of this package is to allow users to publicly share 
+LCA databases without sharing the source database, in the case
+where the latter is under restrictive license. Hence, ```unfold``` 
+allows users to share instead data packages that allows other users
+to reproduce the LCA database (provided they have the source database).
+
+It is based on the [brightway2](https://brightway.dev) framework.
+
+`unfold` is initially conceived to share `premise`-generated 
+databases, without sharing the underlying data which is under 
+restrictive licensing (i.e., ecoinvent).
 
 ## Limitations
 
