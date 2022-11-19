@@ -1,5 +1,6 @@
 # `unfold`
-**UNF**olding scenari**O**-based **L**ca **D**atabases
+
+Publicly share LCA databases that are based on licensed data.
 
 ## What does `unfold` do?
 
@@ -46,6 +47,8 @@ to a source database (including extra inventories),
 as well as a metadata file that describes the databases 
 and their content.
 
+```python
+
     from unfold import Fold
     import bw2data
     
@@ -55,11 +58,14 @@ and their content.
     
     f = Fold()
     f.fold()
+```
 
 #### unfold
 
 ``unfold`` can "unfold" a data package into one or several 
 brightway2 databases.
+
+```python
 
     from unfold import Unfold
     import bw2data
@@ -70,11 +76,14 @@ brightway2 databases.
     
     u = Unfold("a package name.zip")
     u.unfold()
+```
 
 #### unfold a superstructure database (to be used with Activity Browser)
 
 ``unfold`` can "unfold" a data package into a superstructure database
 that can be used with the Activity Browser.
+
+```python
 
     from unfold import Unfold
     import bw2data
@@ -85,7 +94,7 @@ that can be used with the Activity Browser.
     
     u = Unfold("a package name.zip")
     u.unfold(superstructure=True)
-
+```
 
 ## Author
 
