@@ -38,6 +38,8 @@ restrictive licensing (i.e., ecoinvent).
 
 ### Use
 
+See also examples notebooks in the `examples` folder.
+
 #### fold
 
 ``unfold`` can "fold" several brightway2 databases
