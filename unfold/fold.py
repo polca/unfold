@@ -1,20 +1,25 @@
-import pandas as pd
-import numpy as np
-from functools import lru_cache
-from pathlib import Path
+"""
+Contains the Fold class, which is used to fold one or several databases
+into a data package.
+
+"""
+
+from typing import List, Union
+from collections import defaultdict
 import uuid
 import csv
+from functools import lru_cache
+from pathlib import Path
+import pandas as pd
+import numpy as np
 from datapackage import Package
-from typing import List, Tuple
 from scipy import sparse as nsp
 import sparse
-from collections import defaultdict
+from prettytable import PrettyTable
+from wurst import extract_brightway2_databases
+import bw2data
 from .data_cleaning import get_outdated_flows, get_biosphere_code, DATA_DIR
 from . import __version__
-from prettytable import PrettyTable
-import bw2data
-from wurst import extract_brightway2_databases
-from typing import Union
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
 
@@ -27,8 +32,8 @@ def get_list_unique_acts(scenarios: List[List[dict]]) -> list:
     """
 
     list_unique_acts = []
-    for db in scenarios:
-        for ds in db:
+    for database in scenarios:
+        for dataset in database:
             list_unique_acts.extend(
                 [
                     (a["name"], None, a.get("categories"), None, a["unit"])
@@ -40,7 +45,7 @@ def get_list_unique_acts(scenarios: List[List[dict]]) -> list:
                         a.get("location"),
                         a["unit"],
                     )
-                    for a in ds["exchanges"]
+                    for a in dataset["exchanges"]
                 ]
             )
     return list(set(list_unique_acts))
@@ -101,7 +106,7 @@ def write_formatted_data(name, data, filepath):
                             exc["amount"],
                             exc["unit"],
                             exc.get("location"),
-                            "::".join([x for x in exc.get("categories", [])])
+                            "::".join(list(exc.get("categories", [])))
                             if exc["type"] == "biosphere"
                             else None,
                             exc["type"],
@@ -110,8 +115,8 @@ def write_formatted_data(name, data, filepath):
                     )
         result.append([])
 
-    with open(filepath, "w", newline="") as f:
-        writer = csv.writer(f)
+    with open(filepath, "w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
         for line in result:
             writer.writerow(line)
 
@@ -119,6 +124,10 @@ def write_formatted_data(name, data, filepath):
 
 
 class Fold:
+    """
+    Folds a list of databases into a data package.
+    """
+
     def __init__(self):
 
         self.bio_dict = get_biosphere_code()
@@ -169,12 +178,12 @@ class Fold:
                 "Database",
             ]
 
-            for db, database in enumerate(available_databases):
-                table.add_row([db + 1, database])
+            for _db, database in enumerate(available_databases):
+                table.add_row([_db + 1, database])
             print(table)
             print("")
 
-            source_database = int(input(f"Indicate the no. of the reference database: "))
+            source_database = int(input("Indicate the no. of the reference database: "))
             source_database = available_databases[source_database - 1]
         assert source_database in available_databases, "Source database not found"
 
@@ -192,9 +201,9 @@ class Fold:
         if not databases_to_fold:
             databases_to_fold = str(
                 input(
-                    f"Indicate the no. of the databases "
-                    f"you would like to fold, "
-                    f"separated by a comma: "
+                    "Indicate the no. of the databases "
+                    "you would like to fold, "
+                    "separated by a comma: "
                 )
             )
             databases_to_fold = [
@@ -211,7 +220,7 @@ class Fold:
             databases_descriptions = dict(zip(databases_to_fold, descriptions))
 
         assert all(
-            db in available_databases for db in databases_to_fold
+            database in available_databases for database in databases_to_fold
         ), "Database not found"
 
         self.identify_dependencies(databases_to_fold)
@@ -225,57 +234,61 @@ class Fold:
 
         self.databases_to_fold = [
             {
-                "name": db,
-                "database": self.extract_source_database(db),
-                "description": databases_descriptions[db],
+                "name": database,
+                "database": self.extract_source_database(database),
+                "description": databases_descriptions[database],
             }
-            for db in databases_to_fold
+            for database in databases_to_fold
         ]
 
-        for x in self.dependencies:
-            if x not in [source_database] + databases_to_fold:
-                if x in bw2data.databases:
+        for dependency in self.dependencies:
+            if dependency not in [source_database] + databases_to_fold:
+                if dependency in bw2data.databases:
                     print("")
                     print(
-                        f"The database {x} is an external dependency. "
+                        f"The database {dependency} is an external dependency. "
                         f"It will be extracted automatically."
                     )
-                    self.build_mapping_for_dependencies(self.extract_source_database(x))
+                    self.build_mapping_for_dependencies(
+                        self.extract_source_database(dependency)
+                    )
                 else:
-                    raise ValueError(f"Database {x} also needed but not found.")
+                    raise ValueError(
+                        f"Database {dependency} also needed but not found."
+                    )
 
         self.dependencies = {
-            d
-            for d in self.dependencies
-            if d not in [source_database] + databases_to_fold
+            dependency
+            for dependency in self.dependencies
+            if dependency not in [source_database] + databases_to_fold
         }
 
-    def build_mapping_for_dependencies(self, db):
+    def build_mapping_for_dependencies(self, database):
         """Builds a mapping for dependencies."""
         self.dependency_mapping.update(
             {
                 (
-                    a["name"],
-                    a.get("reference product"),
-                    a.get("location"),
-                    a.get("unit"),
-                    a.get("categories"),
-                ): (a["database"], a["code"])
-                for a in db
+                    dataset["name"],
+                    dataset.get("reference product"),
+                    dataset.get("location"),
+                    dataset.get("unit"),
+                    dataset.get("categories"),
+                ): (dataset["database"], dataset["code"])
+                for dataset in database
             }
         )
 
-    def identify_dependencies(self, db_name):
+    def identify_dependencies(self, database_names):
         """
         Identify the dependencies between the databases
         :return: dictionary of dependencies
         """
 
-        if isinstance(db_name, str):
-            db_name = [db_name]
+        if isinstance(database_names, str):
+            database_names = [database_names]
 
-        for db in db_name:
-            self.dependencies.update(bw2data.Database(db).find_graph_dependents())
+        for name in database_names:
+            self.dependencies.update(bw2data.Database(name).find_graph_dependents())
 
     def fold(
         self,
@@ -297,22 +310,40 @@ class Fold:
             databases_to_fold=databases_to_fold,
             descriptions=descriptions,
         )
-        df, extra_inventories = self.generate_scenario_factor_file(
+        dataframe, extra_inventories = self.generate_scenario_factor_file(
             origin_db=self.source, scenarios=self.databases_to_fold
         )
         extra_inventories = self.zero_out_exchanges(extra_inventories)
-        self.build_datapackage(df, extra_inventories)
+        self.build_datapackage(dataframe, extra_inventories)
 
-    def zero_out_exchanges(self, extra_inventories):
-        """Zero out exchanges that are not in the source database."""
-        for ds in extra_inventories:
-            for exc in ds["exchanges"]:
-                if exc["type"] != "production":
-                    exc["amount"] = 0
+    def zero_out_exchanges(self, extra_inventories: List[dict]) -> List[dict]:
+        """
+        Zero out exchanges (except production exchanges) that are not in the source database.
+
+        :param extra_inventories: list of inventories that are not in the source database
+        :return: list of inventories with zeroed out exchanges
+        """
+        for dataset in extra_inventories:
+            for exchange in dataset["exchanges"]:
+                if exchange["type"] != "production":
+                    exchange["amount"] = 0
 
         return extra_inventories
 
-    def get_exchange(self, ind, acts_ind, amount=1.0, production=False):
+    def get_exchange(
+        self, ind: int, acts_ind: dict, amount: float = 1.0, production: bool = False
+    ):
+        """
+        Return an exchange in teh form of a dictionary.
+        If it has a value for "categories", we inder it is a biosphere flow.
+        If not, it is either a technosphere or production flow.
+
+        :param ind: index of the exchange
+        :param acts_ind: dictionary of activities
+        :param amount: amount of the exchange
+        :param production: boolean indicating if it is a production flow
+        :return: dictionary of the exchange
+        """
         name, ref, cat, loc, unit = acts_ind[ind]
         if cat:
             try:
@@ -364,7 +395,16 @@ class Fold:
         }
 
     @lru_cache()
-    def fetch_exchange_code(self, name, ref, loc, unit):
+    def fetch_exchange_code(self, name: str, ref: str, loc: str, unit: str) -> str:
+        """
+        Fetch the code of an activity or create one.
+        name: name of the activity
+        ref: reference product
+        loc: location
+        unit: unit
+
+        :return: code of the activity
+        """
 
         if (name, ref, loc, unit) not in self.exc_codes:
             code = str(uuid.uuid4().hex)
@@ -374,7 +414,14 @@ class Fold:
 
         return code
 
-    def get_act_dict_structure(self, ind, acts_ind) -> dict:
+    def get_act_dict_structure(self, ind: int, acts_ind: dict) -> dict:
+        """
+        Get the structure of the activity/dataset dictionary.
+        :param ind: index of the activity
+        :param acts_ind: dictionary of activities
+        :return: dictionary of the activity
+
+        """
         name, ref, _, loc, unit = acts_ind[ind]
         code = self.fetch_exchange_code(name, ref, loc, unit)
 
@@ -389,20 +436,30 @@ class Fold:
         }
 
     def check_for_outdated_flows(self, database):
-        for ds in database:
-            for exc in ds["exchanges"]:
-                if exc["name"] in self.outdated_flows:
-                    exc["name"] = self.outdated_flows[exc["name"]]
+        """
+        Check for outdated flows in the database.
+        The list of outdated flows is stored in the attribute outdated_flows,
+        which is a dictionary with the old flow name as key and the new flow name as value.
+        See outdated_flows.yaml for the list of outdated flows.
+
+        :param database: the database to check
+        :return: a database with the outdated flows replaced
+        """
+
+        for dataset in database:
+            for exchange in dataset["exchanges"]:
+                if exchange["name"] in self.outdated_flows:
+                    exchange["name"] = self.outdated_flows[exchange["name"]]
         return database
 
-    def build_datapackage(self, df, inventories):
+    def build_datapackage(self, dataframe, inventories):
         """
         Create and export a scenario datapackage.
         """
 
         # check that directory exists, otherwise create it
         Path(DIR_DATAPACKAGE_TEMP).mkdir(parents=True, exist_ok=True)
-        df.to_csv(DIR_DATAPACKAGE_TEMP / "scenario_data.csv", index=False)
+        dataframe.to_csv(DIR_DATAPACKAGE_TEMP / "scenario_data.csv", index=False)
         write_formatted_data(
             name=self.datapackage_name,
             data=inventories,
@@ -455,16 +512,18 @@ class Fold:
         print("Building scenario factor file...")
 
         # create the dataframe
-        df, new_db, list_unique_acts = self.generate_scenario_difference_file(
+        dataframe, new_db, list_unique_acts = self.generate_scenario_difference_file(
             origin_db=origin_db, scenarios=scenarios
         )
 
-        original = df["original"]
+        original = dataframe["original"]
         original = original.replace(0, 1)
-        df.loc[:, "original":] = df.loc[:, "original":].div(original, axis=0)
+        dataframe.loc[:, "original":] = dataframe.loc[:, "original":].div(
+            original, axis=0
+        )
 
         # remove the column `original`
-        df = df.drop(columns=["original"])
+        dataframe = dataframe.drop(columns=["original"])
         # fetch a list of activities not present in original_db
         list_original_acts = get_list_unique_acts([origin_db["database"]])
         new_acts_list = list(set(list_unique_acts) - set(list_original_acts))
@@ -483,7 +542,7 @@ class Fold:
             in new_acts_list
         ]
 
-        return df, extra_acts
+        return dataframe, extra_acts
 
     def generate_scenario_difference_file(
         self, origin_db: dict, scenarios: List[dict]
@@ -496,8 +555,13 @@ class Fold:
 
         self.exc_codes.update(
             {
-                (a["name"], a["reference product"], a["location"], a["unit"]): a["code"]
-                for a in origin_db["database"]
+                (
+                    dataset["name"],
+                    dataset["reference product"],
+                    dataset["location"],
+                    dataset["unit"],
+                ): dataset["code"]
+                for dataset in origin_db["database"]
             }
         )
 
@@ -505,9 +569,9 @@ class Fold:
             [origin_db["database"]] + [s["database"] for s in scenarios]
         )
         acts_ind = dict(enumerate(list_acts))
-        acts_ind_rev = {v: k for k, v in acts_ind.items()}
+        acts_ind_rev = {value: key for key, value in acts_ind.items()}
         list_scenarios = ["original"] + [s["name"] for s in scenarios]
-        list_dbs = [origin_db["database"]] + [a["database"] for a in scenarios]
+        list_of_databases = [origin_db["database"]] + [a["database"] for a in scenarios]
 
         matrices = {
             a: nsp.lil_matrix((len(list_acts), len(list_acts)))
@@ -516,10 +580,16 @@ class Fold:
 
         # store the metadata in a dictionary
         dict_meta = {
-            (a["name"], a["reference product"], None, a["location"], a["unit"]): {
-                b: c
-                for b, c in a.items()
-                if b
+            (
+                dataset["name"],
+                dataset["reference product"],
+                None,
+                dataset["location"],
+                dataset["unit"],
+            ): {
+                key: values
+                for key, values in dataset.items()
+                if key
                 not in [
                     "exchanges",
                     "code",
@@ -530,15 +600,15 @@ class Fold:
                     "database",
                 ]
             }
-            for db in list_dbs
-            for a in db
+            for database in list_of_databases
+            for dataset in database
         }
 
-        for i, db in enumerate(list_dbs):
-            for ds in db:
-                for exc in ds["exchanges"]:
+        for _db_index, database in enumerate(list_of_databases):
+            for dataset in database:
+                for exc in dataset["exchanges"]:
                     if exc["type"] == "biosphere":
-                        s = (
+                        exc_id = (
                             exc["name"],
                             None,
                             exc.get("categories"),
@@ -546,56 +616,60 @@ class Fold:
                             exc["unit"],
                         )
                     else:
-                        s = (
+                        exc_id = (
                             exc["name"],
                             exc["product"],
                             None,
                             exc["location"],
                             exc["unit"],
                         )
-                    c = (
-                        ds["name"],
-                        ds.get("reference product"),
-                        ds.get("categories"),
-                        ds.get("location"),
-                        ds["unit"],
+                    dataset_id = (
+                        dataset["name"],
+                        dataset.get("reference product"),
+                        dataset.get("categories"),
+                        dataset.get("location"),
+                        dataset["unit"],
                     )
-                    matrices[i][acts_ind_rev[s], acts_ind_rev[c]] += exc["amount"]
+                    matrices[_db_index][
+                        acts_ind_rev[exc_id], acts_ind_rev[dataset_id]
+                    ] += exc["amount"]
 
-        m = sparse.stack([sparse.COO(x) for x in matrices.values()], axis=-1)
-        inds = sparse.argwhere(m.sum(-1).T != 0)
-        inds = list(map(tuple, inds))
+        sparse_matrix = sparse.stack(
+            [sparse.COO(x) for x in matrices.values()], axis=-1
+        )
+        indices = sparse.argwhere(sparse_matrix.sum(-1).T != 0)
+        indices = list(map(tuple, indices))
 
         dataframe_rows = []
 
         inds_d = defaultdict(list)
-        for ind in inds:
-            inds_d[ind[0]].append(ind[1])
+        for index in indices:
+            inds_d[index[0]].append(index[1])
 
         new_db = []
 
-        for k, v in inds_d.items():
+        for key, value in inds_d.items():
             act = self.get_act_dict_structure(
-                k,
+                key,
                 acts_ind,
             )
-            act.update(dict_meta[acts_ind[k]])
+            act.update(dict_meta[acts_ind[key]])
 
             act["exchanges"].extend(
-                self.get_exchange(i, acts_ind, amount=m[i, k, 0])
-                if i != k
-                else self.get_exchange(k, acts_ind, production=True)
-                for i in v
+                self.get_exchange(i, acts_ind, amount=sparse_matrix[i, key, 0])
+                if i != key
+                else self.get_exchange(key, acts_ind, production=True)
+                for i in value
             )
 
             new_db.append(act)
 
-        inds_std = sparse.argwhere(m.std(-1).T > 1e-12)
+        inds_std = sparse.argwhere(sparse_matrix.std(-1).T > 1e-12)
 
-        for i in inds_std:
+        for _db_index in inds_std:
 
-            c_name, c_ref, c_cat, c_loc, c_unit = acts_ind[i[0]]
-            s_name, s_ref, s_cat, s_loc, s_unit = acts_ind[i[1]]
+            c_name, c_ref, c_cat, c_loc, c_unit = acts_ind[_db_index[0]]
+            s_name, s_ref, s_cat, s_loc, s_unit = acts_ind[_db_index[1]]
 
             if s_cat:
                 flow_type = "biosphere"
@@ -621,7 +695,7 @@ class Fold:
                         ],
                     )
 
-            elif i[0] == i[1]:
+            elif _db_index[0] == _db_index[1]:
                 flow_type = "production"
                 database_name = self.datapackage_name
                 exc_key_supplier = (
@@ -659,9 +733,9 @@ class Fold:
             ]
 
             if flow_type == "production":
-                row.extend(np.ones_like(m[i[1], i[0], :]))
+                row.extend(np.ones_like(sparse_matrix[_db_index[1], _db_index[0], :]))
             else:
-                row.extend(m[i[1], i[0], :])
+                row.extend(sparse_matrix[_db_index[1], _db_index[0], :])
 
             dataframe_rows.append(row)
 

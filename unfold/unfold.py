@@ -4,14 +4,16 @@ Contains the Unfold class, to extract datapackage files.
 """
 
 from ast import literal_eval
+from copy import deepcopy
+from typing import Union, List
+from pathlib import Path
 from datapackage import Package
 import pandas as pd
-from pathlib import Path
-from typing import Union, List
 from prettytable import PrettyTable
-from copy import deepcopy
-import bw2data, bw2io
-from wurst import extract_brightway2_databases, write_brightway2_database
+import numpy as np
+import bw2data
+import bw2io
+from wurst import extract_brightway2_databases
 from wurst.linking import (
     change_db_name,
     check_duplicate_codes,
@@ -19,7 +21,7 @@ from wurst.linking import (
     link_internal,
 )
 from .utils import HiddenPrints
-import numpy as np
+
 
 from .data_cleaning import (
     remove_missing_fields,
@@ -33,7 +35,13 @@ from .data_cleaning import (
 from .export import UnfoldExporter
 
 
-class Unfold(object):
+def _c(value):
+    """Converts zero to one."""
+    if value == 0:
+        return 1
+    return value
+
+class Unfold():
     """Extracts datapackage files."""
 
     def __init__(self, path: Union[str, Path]):
@@ -82,10 +90,10 @@ class Unfold(object):
             table = PrettyTable()
             table.field_names = ["No.", "Dependency", "System model", "Version"]
 
-            for db, database in enumerate(self.dependencies):
+            for _db, database in enumerate(self.dependencies):
                 table.add_row(
                     [
-                        db + 1,
+                        _db + 1,
                         database["name"],
                         database.get("system model", ""),
                         database.get("version", ""),
@@ -102,19 +110,19 @@ class Unfold(object):
                 "Database",
             ]
 
-            for db, database in enumerate(available_databases):
-                table.add_row([db + 1, database])
+            for _db, database in enumerate(available_databases):
+                table.add_row([_db + 1, database])
             print(table)
             print("")
 
-            for db, database in enumerate(self.dependencies):
+            for _db, database in enumerate(self.dependencies):
                 db_number = input(
-                    f"Indicate the database number for dependency {db + 1}: "
+                    f"Indicate the database number for dependency {_db + 1}: "
                 )
                 name = available_databases[int(db_number) - 1]
                 database["source"] = name
 
-    def build_mapping_for_dependencies(self, db):
+    def build_mapping_for_dependencies(self, database):
         """Builds a mapping for dependencies."""
         self.dependency_mapping.update(
             {
@@ -124,18 +132,18 @@ class Unfold(object):
                     a.get("location"),
                     a.get("categories"),
                 ): (a["database"], a["code"])
-                for a in db
+                for a in database
             }
         )
 
     def extract_source_database(self):
         """Extracts the source database."""
         for dependency in self.dependencies:
-            db = extract_brightway2_databases(dependency["source"])
+            database = extract_brightway2_databases(dependency["source"])
 
-            self.build_mapping_for_dependencies(db)
+            self.build_mapping_for_dependencies(database)
             if dependency.get("type") == "source":
-                self.database.extend(db)
+                self.database.extend(database)
 
     def clean_imported_inventory(self, data):
         """Cleans the imported inventory."""
@@ -157,38 +165,21 @@ class Unfold(object):
         self.database = change_db_name(self.database, self.package.descriptor["name"])
         self.build_mapping_for_dependencies(self.database)
 
+
     def adjust_exchanges(self):
         """Adjusts the exchanges."""
 
-        _ = lambda x: 1.0 if x == 0.0 else x
-
-        key_to_remove = [
-            "from activity name",
-            "from reference product",
-            "from location",
-            "from categories",
-            "from database",
-            "to activity name",
-            "to reference product",
-            "to location",
-            "to categories",
-            "to database",
-            "to key",
-            "from key",
-            "unit",
-            "flow type",
-        ]
         self.factors = self.scenario_df.groupby("flow id").sum().to_dict("index")
 
         for scenario, database in self.databases_to_export.items():
             print(f"Creating database for scenario {scenario}...")
-            for ds in database:
-                for exc in ds["exchanges"]:
+            for dataset in database:
+                for exc in dataset["exchanges"]:
                     if exc["type"] != "production":
                         flow_id = (
-                            ds["name"],
-                            ds["reference product"],
-                            ds["location"],
+                            dataset["name"],
+                            dataset["reference product"],
+                            dataset["location"],
                             exc["name"],
                             exc.get("product"),
                             exc.get("location"),
@@ -198,7 +189,7 @@ class Unfold(object):
                         )
                         if flow_id in self.factors:
                             if scenario in self.factors[flow_id]:
-                                exc["amount"] = _(float(exc["amount"])) * float(
+                                exc["amount"] = _c(float(exc["amount"])) * float(
                                     self.factors[flow_id][scenario]
                                 )
                                 del self.factors[flow_id][scenario]
@@ -219,11 +210,11 @@ class Unfold(object):
         :param factor: multiplication factor
         :return: database with exchange added
         """
-        for ds in database:
+        for dataset in database:
             if (
-                ds["name"] == flow_id[0]
-                and ds["reference product"] == flow_id[1]
-                and ds["location"] == flow_id[2]
+                dataset["name"] == flow_id[0]
+                and dataset["reference product"] == flow_id[1]
+                and dataset["location"] == flow_id[2]
             ):
                 exc = {
                     "amount": float(factor),
@@ -238,7 +229,7 @@ class Unfold(object):
                     ),
                 }
 
-                ds["exchanges"].append(exc)
+                dataset["exchanges"].append(exc)
                 break
 
         return database
@@ -256,7 +247,7 @@ class Unfold(object):
             }
 
         scenarios_to_leave_out = list(
-            set([s["name"] for s in self.scenarios]) - set(scenarios_to_keep)
+            set(s["name"] for s in self.scenarios) - set(scenarios_to_keep)
         )
         self.scenario_df = pd.DataFrame(
             self.package.get_resource("scenario_data").read(keyed=True)
@@ -301,18 +292,16 @@ class Unfold(object):
         self.format_dataframe(scenarios=scenarios, superstructure=True)
         scenarios = [self.scenarios[i]["name"] for i in scenarios]
 
-        _ = lambda x: 1.0 if x == 0.0 else x
-
         self.factors = self.scenario_df.groupby("flow id").sum().to_dict("index")
         existing_exchanges = []
 
-        for ds in self.database:
-            for exc in ds["exchanges"]:
+        for dataset in self.database:
+            for exc in dataset["exchanges"]:
                 if exc["type"] != "production":
                     flow_id = (
-                        ds["name"],
-                        ds["reference product"],
-                        ds["location"],
+                        dataset["name"],
+                        dataset["reference product"],
+                        dataset["location"],
                         exc["name"],
                         exc.get("product"),
                         exc.get("location"),
@@ -323,9 +312,9 @@ class Unfold(object):
 
                     if flow_id in self.factors:
                         existing_exchanges.append(flow_id)
-                        for k, v in self.factors[flow_id].items():
-                            if v != 0.0:
-                                self.factors[flow_id][k] = float(v) * _(
+                        for key, value in self.factors[flow_id].items():
+                            if value != 0.0:
+                                self.factors[flow_id][key] = float(value) * _c(
                                     float(exc["amount"])
                                 )
 
@@ -341,6 +330,7 @@ class Unfold(object):
             "unit",
             "flow type",
         ] + scenarios
+
         self.scenario_df["to database"] = self.package.descriptor["name"]
         self.scenario_df["to categories"] = None
         self.scenario_df["to key"] = None
@@ -466,7 +456,7 @@ class Unfold(object):
                 f"Scenario difference file exported to {self.package.descriptor['name']}.xlsx!"
             )
             print("")
-            print(f"Writing superstructure database...")
+            print("Writing superstructure database...")
             change_db_name(self.database, self.package.descriptor["name"])
             link_internal(self.database)
             check_internal_linking(self.database)
