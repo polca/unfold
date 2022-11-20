@@ -1,0 +1,39 @@
+package:
+  name: unfold
+  version: {{ environ['VERSION'] }}
+
+source:
+  path: ..
+
+build:
+  noarch: python
+  number: 0
+  script: python -m pip install --no-deps --ignore-installed .
+  script_env:
+    - VERSION
+    - CONDA_BLD_PATH
+
+requirements:
+  build:
+    - python
+    - setuptools
+  run:
+    - numpy
+    - pandas
+    - bw2io==0.8.7
+    - bw2data
+    - wurst
+    - prettytable
+    - datapackage
+    - sparse
+    - scipy
+
+test:
+  imports:
+    - unfold
+
+about:
+  home: https://github.com/romainsacchi/unfold
+  license: GNU AFFERO GENERAL PUBLIC LICENSE v.3
+  summary: 'Publicly share LCA databases that are based on licensed data.'
+license_family: GNU
