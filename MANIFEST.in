@@ -1,0 +1,4 @@
+include unfold/data/*.txt
+include unfold/data/*.csv
+include unfold/data/*.json
+include unfold/data/*.yml
