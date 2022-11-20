@@ -5,14 +5,15 @@ Contains the Unfold class, to extract datapackage files.
 
 from ast import literal_eval
 from copy import deepcopy
-from typing import Union, List
 from pathlib import Path
-from datapackage import Package
-import pandas as pd
-from prettytable import PrettyTable
-import numpy as np
+from typing import List, Union
+
 import bw2data
 import bw2io
+import numpy as np
+import pandas as pd
+from datapackage import Package
+from prettytable import PrettyTable
 from wurst import extract_brightway2_databases
 from wurst.linking import (
     change_db_name,
@@ -20,19 +21,18 @@ from wurst.linking import (
     check_internal_linking,
     link_internal,
 )
-from .utils import HiddenPrints
-
 
 from .data_cleaning import (
-    remove_missing_fields,
     add_biosphere_links,
-    check_for_duplicates,
     add_product_field_to_exchanges,
-    remove_categories_for_technosphere_flows,
+    check_for_duplicates,
     correct_fields_format,
+    remove_categories_for_technosphere_flows,
+    remove_missing_fields,
     remove_unused_fields,
 )
 from .export import UnfoldExporter
+from .utils import HiddenPrints
 
 
 def _c(value):
@@ -41,7 +41,8 @@ def _c(value):
         return 1
     return value
 
-class Unfold():
+
+class Unfold:
     """Extracts datapackage files."""
 
     def __init__(self, path: Union[str, Path]):
@@ -78,8 +79,7 @@ class Unfold():
         dependencies = dependencies or []
 
         if dependencies and all(
-            dependency in available_databases
-            for dependency in dependencies.values()
+            dependency in available_databases for dependency in dependencies.values()
         ):
             for database in self.dependencies:
                 database["source"] = dependencies[database["name"]]
@@ -164,7 +164,6 @@ class Unfold():
         self.database.extend(i.data)
         self.database = change_db_name(self.database, self.package.descriptor["name"])
         self.build_mapping_for_dependencies(self.database)
-
 
     def adjust_exchanges(self):
         """Adjusts the exchanges."""
