@@ -136,7 +136,7 @@ jobs:
         run: echo running on branch ${GITHUB_REF##*/}
 
       - name: Publish distribution 📦 to Anaconda if Push
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         shell: bash -l {0}
 
         run: |
@@ -175,7 +175,7 @@ jobs:
           activate-environment: test
 
       - name: Pull distribution 📦 from Anaconda and test
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         shell: bash -l {0}
 
         run: |

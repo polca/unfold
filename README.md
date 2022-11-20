@@ -9,7 +9,7 @@ Publicly share LCA databases that are based on licensed data.
 
 ## What does `unfold` do?
 
-``unfold`` is a Python package that allows "packing" and "unpacking"
+``unfold`` is a Python package that allows "folding" and "unfolding"
 LCA databases derived from a source database (e.g., ecoinvent) without
 explicitly referring to the data contained in the source database.
 
@@ -30,6 +30,7 @@ restrictive licensing (i.e., ecoinvent).
 ## Limitations
 
 * only works with `brightway2` at the moment
+* folding a large number of databases (>3) can be slow
 
 
 ## How to
