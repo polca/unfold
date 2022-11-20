@@ -1,14 +1,16 @@
-from pathlib import Path
-import yaml
 import csv
 import uuid
-import wurst as ws
-from prettytable import PrettyTable
+from pathlib import Path
 from typing import List, Tuple, Union
+
+import wurst as ws
+import yaml
+from prettytable import PrettyTable
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 FILEPATH_BIOSPHERE_FLOWS = DATA_DIR / "flows_biosphere_38.csv"
 OUTDATED_FLOWS = DATA_DIR / "outdated_flows.yaml"
+
 
 def get_outdated_flows() -> dict:
     """
@@ -40,8 +42,10 @@ def get_biosphere_code() -> dict:
 
     return csv_dict
 
+
 biosphere_dict = get_biosphere_code()
 outdated_flows = get_outdated_flows()
+
 
 def remove_missing_fields(data: List[dict]) -> List[dict]:
     """
@@ -54,6 +58,7 @@ def remove_missing_fields(data: List[dict]) -> List[dict]:
                 del dataset[key]
 
     return data
+
 
 def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[dict]:
     """Add links for biosphere exchanges to :attr:`import_db`
@@ -92,9 +97,7 @@ def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[
                                 if delete_missing:
                                     y["flag_deletion"] = True
                                 else:
-                                    print(
-                                        f"Could not find a biosphere flow for {key}"
-                                    )
+                                    print(f"Could not find a biosphere flow for {key}")
 
                     except KeyError:
                         if delete_missing:
@@ -129,6 +132,7 @@ def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[
 
     return data
 
+
 def check_for_duplicates(db: List[dict], data: List[dict]) -> List[dict]:
     """
     Check whether the inventories to be imported are not
@@ -139,13 +143,15 @@ def check_for_duplicates(db: List[dict], data: List[dict]) -> List[dict]:
     """
 
     # print if we find datasets that already exist
-    db_names = [(x["name"].lower(), x["reference product"].lower(), x["location"]) for x in db]
+    db_names = [
+        (x["name"].lower(), x["reference product"].lower(), x["location"]) for x in db
+    ]
 
     already_exist = [
-            (x["name"].lower(), x["reference product"].lower(), x["location"])
-            for x in data
-            if (x["name"].lower(), x["reference product"].lower(), x["location"])
-            in db_names
+        (x["name"].lower(), x["reference product"].lower(), x["location"])
+        for x in data
+        if (x["name"].lower(), x["reference product"].lower(), x["location"])
+        in db_names
     ]
 
     if len(already_exist) > 0:
@@ -165,6 +171,7 @@ def check_for_duplicates(db: List[dict], data: List[dict]) -> List[dict]:
         for x in data
         if (x["name"], x["reference product"], x["location"]) not in db_names
     ]
+
 
 def add_product_field_to_exchanges(data: List[dict], db: List[dict]) -> List[dict]:
     """Add the `product` key to the production and
@@ -202,6 +209,7 @@ def add_product_field_to_exchanges(data: List[dict], db: List[dict]) -> List[dic
             dataset["code"] = str(uuid.uuid4().hex)
 
     return data
+
 
 def correct_product_field(exc: dict, data: List[dict], database: List[dict]) -> str:
     """
@@ -243,6 +251,7 @@ def correct_product_field(exc: dict, data: List[dict], database: List[dict]) -> 
 
     return exc["reference product"]
 
+
 def remove_categories_for_technosphere_flows(data):
     """
     Remove the categories field for technosphere flows
@@ -255,6 +264,7 @@ def remove_categories_for_technosphere_flows(data):
                 if "categories" in y:
                     del y["categories"]
     return data
+
 
 def remove_unused_fields(data: list) -> list:
     """
@@ -270,6 +280,7 @@ def remove_unused_fields(data: list) -> list:
 
     return data
 
+
 def correct_fields_format(data: list, name: str) -> list:
     """
     Correct the format of some fields.
@@ -284,10 +295,10 @@ def correct_fields_format(data: list, name: str) -> list:
                 dataset["parameters"] = [dataset["parameters"]]
 
             if (
-                    dataset["parameters"] is None
-                    or dataset["parameters"] == {}
-                    or dataset["parameters"] == []
-                ):
+                dataset["parameters"] is None
+                or dataset["parameters"] == {}
+                or dataset["parameters"] == []
+            ):
                 del dataset["parameters"]
 
             else:

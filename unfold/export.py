@@ -1,5 +1,6 @@
-from bw2io.importers.base_lci import LCIImporter
 from bw2data import databases
+from bw2io.importers.base_lci import LCIImporter
+
 
 class UnfoldExporter(LCIImporter):
     def __init__(self, db_name, data):
@@ -14,7 +15,5 @@ class UnfoldExporter(LCIImporter):
     # to be overwritten
     def write_database(self):
         if self.db_name in databases:
-            print(
-                f"Database {self.db_name} already exists: it will be overwritten."
-            )
+            print(f"Database {self.db_name} already exists: it will be overwritten.")
         super().write_database()

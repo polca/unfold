@@ -4,22 +4,24 @@ into a data package.
 
 """
 
-from typing import List, Union
-from collections import defaultdict
-import uuid
 import csv
+import uuid
+from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
-import pandas as pd
-import numpy as np
-from datapackage import Package
-from scipy import sparse as nsp
-import sparse
-from prettytable import PrettyTable
-from wurst import extract_brightway2_databases
+from typing import List, Union
+
 import bw2data
-from .data_cleaning import get_outdated_flows, get_biosphere_code, DATA_DIR
+import numpy as np
+import pandas as pd
+import sparse
+from datapackage import Package
+from prettytable import PrettyTable
+from scipy import sparse as nsp
+from wurst import extract_brightway2_databases
+
 from . import __version__
+from .data_cleaning import DATA_DIR, get_biosphere_code, get_outdated_flows
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
 

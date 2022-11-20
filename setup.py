@@ -48,7 +48,7 @@ setup(
         "prettytable",
         "datapackage",
         "sparse",
-        "scipy"
+        "scipy",
     ],
     url="https://github.com/polca/premise",
     description="Unpacks LCA scenario databases.",
