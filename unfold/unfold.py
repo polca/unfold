@@ -1,5 +1,6 @@
 """
-Contains the Stunt class, to extract datapackage files.
+Contains the Unfold class, to extract datapackage files.
+
 """
 
 from ast import literal_eval
@@ -25,7 +26,6 @@ from .data_cleaning import (
     add_biosphere_links,
     check_for_duplicates,
     add_product_field_to_exchanges,
-    biosphere_dict,
     remove_categories_for_technosphere_flows,
     correct_fields_format,
     remove_unused_fields,
@@ -70,7 +70,8 @@ class Unfold(object):
         dependencies = dependencies or []
 
         if dependencies and all(
-            dependency in available_databases for dependency in dependencies.values()
+            dependency in available_databases
+            for dependency in dependencies.values()
         ):
             for database in self.dependencies:
                 database["source"] = dependencies[database["name"]]
@@ -237,12 +238,6 @@ class Unfold(object):
                     ),
                 }
 
-                # name
-                # reference product
-                # location
-                # unit
-                # categories
-
                 ds["exchanges"].append(exc)
                 break
 
@@ -308,22 +303,6 @@ class Unfold(object):
 
         _ = lambda x: 1.0 if x == 0.0 else x
 
-        key_to_remove = [
-            "from activity name",
-            "from reference product",
-            "from location",
-            "from categories",
-            "from database",
-            "to activity name",
-            "to reference product",
-            "to location",
-            "to categories",
-            "to database",
-            "to key",
-            "from key",
-            "unit",
-            "flow type",
-        ]
         self.factors = self.scenario_df.groupby("flow id").sum().to_dict("index")
         existing_exchanges = []
 
@@ -447,7 +426,14 @@ class Unfold(object):
         self.write(superstructure=superstructure)
 
     def write(self, superstructure: bool = False):
-        """Write the databases."""
+        """
+        Write the databases.
+        If superstructure is True, write the scenario difference file,
+        along with a database.
+
+        :param superstructure: bool, default False
+
+        """
 
         if not superstructure:
             for scenario, database in self.databases_to_export.items():
@@ -479,6 +465,7 @@ class Unfold(object):
             print(
                 f"Scenario difference file exported to {self.package.descriptor['name']}.xlsx!"
             )
+            print("")
             print(f"Writing superstructure database...")
             change_db_name(self.database, self.package.descriptor["name"])
             link_internal(self.database)
