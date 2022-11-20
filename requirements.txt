@@ -7,3 +7,4 @@ prettytable
 datapackage
 sparse
 scipy
+pyyaml

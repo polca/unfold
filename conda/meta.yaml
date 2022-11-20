@@ -27,6 +27,7 @@ requirements:
     - datapackage
     - sparse
     - scipy
+    - pyyaml
 
 test:
   imports:
