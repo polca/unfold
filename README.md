@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://badge.fury.io/py/unfold" target="_blank"><img src="https://badge.fury.io/py/unfold.svg"></a>
-  <a href="https://github.com/romainsacchi/unfold" target="_blank"><img src="https://github.com/romainsacchi/unfold/actions/workflows/main.yml/badge.svg?branch=master"></a>
+  <a href="https://github.com/romainsacchi/unfold" target="_blank"><img src="https://github.com/romainsacchi/unfold/actions/workflows/main.yml/badge.svg?branch=main"></a>
 </p>
 
 Publicly share LCA databases that are based on licensed data.
