@@ -21,13 +21,14 @@ requirements:
     - numpy
     - pandas
     - bw2io==0.8.7
-    - bw2data
-    - wurst
+    - bw2data==3.6.5
+    - wurst==0.3.4
     - prettytable
     - datapackage
     - sparse
     - scipy
     - pyyaml
+    - pyprind
 
 test:
   imports:

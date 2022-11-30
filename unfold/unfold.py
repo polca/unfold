@@ -7,6 +7,7 @@ from ast import literal_eval
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Union
+import pyprind
 
 import bw2data
 import bw2io
@@ -33,6 +34,7 @@ from .data_cleaning import (
 )
 from .export import UnfoldExporter
 from .utils import HiddenPrints
+from .fold import get_outdated_flows
 
 
 def _c(value):
@@ -40,6 +42,13 @@ def _c(value):
     if value == 0:
         return 1
     return value
+
+def del_all(mapping, to_remove):
+    """Remove list of elements from mapping."""
+    for key in to_remove:
+        del mapping[key]
+
+    return mapping
 
 
 class Unfold:
@@ -194,14 +203,12 @@ class Unfold:
                                 del self.factors[flow_id][scenario]
 
             # check if there are still factors to remove
-            for flow_id in self.factors:
-                if self.factors[flow_id].get(scenario):
-                    database = self.add_exchanges_to_database(
-                        database, flow_id, self.factors[flow_id][scenario]
-                    )
-                    del self.factors[flow_id][scenario]
+            self.databases_to_export[scenario] = self.add_exchanges_to_database(
+                database, scenario
+            )
 
-    def add_exchanges_to_database(self, database, flow_id, factor):
+
+    def add_exchanges_to_database(self, database: List[dict], scenario: str):
         """
         Add an exchange to `database`.
         :param database: database to add an exchange to.
@@ -209,29 +216,51 @@ class Unfold:
         :param factor: multiplication factor
         :return: database with exchange added
         """
-        for dataset in database:
-            if (
-                dataset["name"] == flow_id[0]
-                and dataset["reference product"] == flow_id[1]
-                and dataset["location"] == flow_id[2]
-            ):
+
+        list_ds_to_modify = {
+            (a[0], a[1], a[2])
+            for a in self.factors
+        }
+
+        datasets = [
+            dataset for dataset in database
+            if (dataset["name"], dataset["reference product"], dataset["location"])
+               in list_ds_to_modify
+        ]
+
+        for dataset in pyprind.prog_percent(datasets):
+
+            flows = {k: v for k, v in self.factors.items()
+                if k[0] == dataset["name"]
+                and k[1] == dataset["reference product"]
+                and k[2] == dataset["location"]
+            }
+
+            excs = []
+
+            for flow, factor in flows.items():
+
                 exc = {
-                    "amount": float(factor),
-                    "type": flow_id[-1],
-                    "name": flow_id[3],
-                    "product": flow_id[4],
-                    "location": flow_id[5],
-                    "categories": flow_id[6],
-                    "unit": flow_id[7],
+                    "amount": float(factor[scenario]),
+                    "type": flow[-1],
+                    "name": flow[3],
+                    "product": flow[4],
+                    "location": flow[5],
+                    "categories": flow[6],
+                    "unit": flow[7],
                     "input": self.dependency_mapping.get(
-                        (flow_id[3], flow_id[4], flow_id[5], flow_id[6])
+                        (flow[3], flow[4], flow[5], flow[6])
                     ),
                 }
 
-                dataset["exchanges"].append(exc)
-                break
+                excs.append(exc)
+
+            dataset["exchanges"].extend(excs)
+
+            self.factors = del_all(self.factors, flows)
 
         return database
+
 
     def format_dataframe(
         self, scenarios: List[int] = None, superstructure: bool = False
@@ -288,10 +317,12 @@ class Unfold:
     def format_superstructure_dataframe(self, scenarios: List[int]):
         """Formats the superstructure dataframe."""
 
+        scenarios = scenarios or list(range(len(self.scenarios)))
         self.format_dataframe(scenarios=scenarios, superstructure=True)
+
         scenarios = [self.scenarios[i]["name"] for i in scenarios]
 
-        self.factors = self.scenario_df.groupby("flow id").sum().to_dict("index")
+        self.factors = self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
         existing_exchanges = []
 
         for dataset in self.database:
@@ -347,6 +378,7 @@ class Unfold:
             ),
             axis=1,
         )
+
         self.scenario_df.loc[:, "to key"] = self.scenario_df.apply(
             lambda x: self.dependency_mapping.get(
                 (
@@ -358,6 +390,7 @@ class Unfold:
             ),
             axis=1,
         )
+
 
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "technosphere"), "from database"
@@ -384,13 +417,13 @@ class Unfold:
             + scenarios
         ]
 
-        for flow_id in self.factors:
-            if flow_id not in existing_exchanges:
-                self.database = self.add_exchanges_to_database(
-                    self.database,
-                    flow_id,
-                    0.0,
-                )
+        print("Building superstructure database...")
+
+        self.database = self.add_exchanges_to_database(
+            self.database,
+            scenarios[0]
+        )
+
 
     def unfold(
         self,

@@ -666,7 +666,7 @@ class Fold:
 
             new_db.append(act)
 
-        inds_std = sparse.argwhere(sparse_matrix.std(-1).T > 1e-12)
+        inds_std = sparse.argwhere(sparse_matrix.std(-1).T > 1e-6)
 
         for _db_index in inds_std:
 

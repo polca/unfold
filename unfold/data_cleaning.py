@@ -63,6 +63,8 @@ def remove_missing_fields(data: List[dict]) -> List[dict]:
 def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[dict]:
     """Add links for biosphere exchanges to :attr:`import_db`
     Modifies the :attr:`import_db` attribute in place.
+    Also checks for outdated biosphere flows and replaces them with the
+    current ones.
 
     :param data: list of dictionaries with the data to be imported
     :param delete_missing: whether unlinked exchanges should be deleted or not.
@@ -70,6 +72,9 @@ def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[
     for x in data:
         for y in x["exchanges"]:
             if y["type"] == "biosphere":
+                if y["name"] in outdated_flows:
+                    y["name"] = outdated_flows[y["name"]]
+
                 if isinstance(y["categories"], str):
                     y["categories"] = tuple(y["categories"].split("::"))
                 if len(y["categories"]) > 1:
