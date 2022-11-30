@@ -50,7 +50,7 @@ setup(
         "scipy",
         "pyyaml",
         "wurst==0.3.4",
-        "pyprind"
+        "pyprind",
     ],
     url="https://github.com/polca/premise",
     description="Unpacks LCA scenario databases.",
