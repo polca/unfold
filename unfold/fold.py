@@ -313,7 +313,7 @@ class Fold:
             descriptions=descriptions,
         )
         dataframe, extra_inventories = self.generate_scenario_factor_file(
-           origin_db=self.source, scenarios=self.databases_to_fold
+            origin_db=self.source, scenarios=self.databases_to_fold
         )
 
         extra_inventories = self.zero_out_exchanges(extra_inventories)
@@ -516,7 +516,7 @@ class Fold:
 
         # create the dataframe
         dataframe, new_db, list_unique_acts = self.generate_scenario_difference_file(
-           origin_db=origin_db, scenarios=scenarios
+            origin_db=origin_db, scenarios=scenarios
         )
 
         original = dataframe["original"]
@@ -667,7 +667,9 @@ class Fold:
 
             new_db.append(act)
 
-        inds_std = sparse.argwhere((m[..., 1:] == m[..., 0, None]).all(axis=-1).T == False)
+        inds_std = sparse.argwhere(
+            (m[..., 1:] == m[..., 0, None]).all(axis=-1).T == False
+        )
 
         for _db_index in inds_std:
 

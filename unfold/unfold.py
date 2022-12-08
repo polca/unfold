@@ -26,14 +26,13 @@ from wurst.linking import (
 from .data_cleaning import (
     add_biosphere_links,
     add_product_field_to_exchanges,
+    check_exchanges_input,
     check_for_duplicates,
     correct_fields_format,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    check_exchanges_input
 )
 from .export import UnfoldExporter
-from .utils import HiddenPrints
 from .fold import get_outdated_flows
 from .utils import HiddenPrints
 
@@ -147,8 +146,6 @@ class Unfold:
             }
         )
 
-
-
     def extract_source_database(self):
         """Extracts the source database."""
         for dependency in self.dependencies:
@@ -181,11 +178,12 @@ class Unfold:
         self.database = change_db_name(self.database, self.package.descriptor["name"])
         self.build_mapping_for_dependencies(self.database)
 
-
     def adjust_exchanges(self):
         """Adjusts the exchanges."""
 
-        self.factors = self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
+        self.factors = (
+            self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
+        )
 
         for scenario, database in self.databases_to_export.items():
             print(f"Creating database for scenario {scenario}...")
@@ -222,12 +220,10 @@ class Unfold:
                                 )
                             ]
 
-
             # check if there are still exchange to add
             self.databases_to_export[scenario] = self.add_exchanges_to_database(
                 database, scenario
             )
-
 
     def add_exchanges_to_database(self, database: List[dict], scenario: str):
         """
@@ -238,24 +234,20 @@ class Unfold:
         :return: database with exchange added
         """
 
-        list_ds_to_modify = {
-            (a[0], a[1], a[2])
-            for a in self.factors
-        }
+        list_ds_to_modify = {(a[0], a[1], a[2]) for a in self.factors}
 
         datasets = [
-            dataset for dataset in database
-            if (
-                   dataset["name"],
-                   dataset["reference product"],
-                   dataset["location"]
-               )
-               in list_ds_to_modify
+            dataset
+            for dataset in database
+            if (dataset["name"], dataset["reference product"], dataset["location"])
+            in list_ds_to_modify
         ]
 
         for dataset in pyprind.prog_percent(datasets):
 
-            flows = {k: v for k, v in self.factors.items()
+            flows = {
+                k: v
+                for k, v in self.factors.items()
                 if k[0] == dataset["name"]
                 and k[1] == dataset["reference product"]
                 and k[2] == dataset["location"]
@@ -296,7 +288,6 @@ class Unfold:
             self.databases_to_export = {
                 s: deepcopy(self.database) for s in scenarios_to_keep
             }
-
 
         scenarios_to_leave_out = list(
             set(s["name"] for s in self.scenarios) - set(scenarios_to_keep)
@@ -525,7 +516,9 @@ class Unfold:
             print("")
             print("Writing superstructure database...")
             change_db_name(self.database, self.package.descriptor["name"])
-            self.database = check_exchanges_input(self.database, self.dependency_mapping)
+            self.database = check_exchanges_input(
+                self.database, self.dependency_mapping
+            )
             link_internal(self.database)
             check_internal_linking(self.database)
             check_duplicate_codes(self.database)
