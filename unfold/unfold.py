@@ -30,11 +30,10 @@ from .data_cleaning import (
     correct_fields_format,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    remove_unused_fields,
+    check_exchanges_input
 )
 from .export import UnfoldExporter
 from .utils import HiddenPrints
-from .fold import get_outdated_flows
 
 
 def _c(value):
@@ -145,6 +144,8 @@ class Unfold:
             }
         )
 
+
+
     def extract_source_database(self):
         """Extracts the source database."""
         for dependency in self.dependencies:
@@ -156,7 +157,8 @@ class Unfold:
 
     def clean_imported_inventory(self, data):
         """Cleans the imported inventory."""
-        remove_missing_fields(data)
+        print("Cleaning imported inventory...")
+        data = remove_missing_fields(data)
         add_biosphere_links(data)
         check_for_duplicates(self.database, data)
         add_product_field_to_exchanges(data, self.database)
@@ -165,25 +167,29 @@ class Unfold:
 
     def extract_additional_inventories(self):
         """Extracts additional inventories."""
+        print("Extracting additional inventories...")
         with HiddenPrints():
             i = bw2io.CSVImporter(self.package.get_resource("inventories").source)
             i.apply_strategies()
 
         i.data = self.clean_imported_inventory(i.data)
+
         self.database.extend(i.data)
         self.database = change_db_name(self.database, self.package.descriptor["name"])
         self.build_mapping_for_dependencies(self.database)
 
+
     def adjust_exchanges(self):
         """Adjusts the exchanges."""
 
-        self.factors = self.scenario_df.groupby("flow id").sum().to_dict("index")
+        self.factors = self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
 
         for scenario, database in self.databases_to_export.items():
             print(f"Creating database for scenario {scenario}...")
             for dataset in database:
                 for exc in dataset["exchanges"]:
                     if exc["type"] != "production":
+
                         flow_id = (
                             dataset["name"],
                             dataset["reference product"],
@@ -197,12 +203,24 @@ class Unfold:
                         )
                         if flow_id in self.factors:
                             if scenario in self.factors[flow_id]:
-                                exc["amount"] = _c(float(exc["amount"])) * float(
-                                    self.factors[flow_id][scenario]
-                                )
-                                del self.factors[flow_id][scenario]
+                                if self.factors[flow_id][scenario] is not None:
+                                    exc["amount"] = _c(float(exc["amount"])) * float(
+                                        self.factors[flow_id][scenario]
+                                    )
+                                    self.factors[flow_id][scenario] = None
 
-            # check if there are still factors to remove
+                        if not exc.get("input"):
+                            exc["input"] = self.dependency_mapping[
+                                (
+                                    exc["name"],
+                                    exc.get("product"),
+                                    exc.get("location"),
+                                    exc.get("categories"),
+                                )
+                            ]
+
+
+            # check if there are still exchange to add
             self.databases_to_export[scenario] = self.add_exchanges_to_database(
                 database, scenario
             )
@@ -224,7 +242,11 @@ class Unfold:
 
         datasets = [
             dataset for dataset in database
-            if (dataset["name"], dataset["reference product"], dataset["location"])
+            if (
+                   dataset["name"],
+                   dataset["reference product"],
+                   dataset["location"]
+               )
                in list_ds_to_modify
         ]
 
@@ -234,6 +256,7 @@ class Unfold:
                 if k[0] == dataset["name"]
                 and k[1] == dataset["reference product"]
                 and k[2] == dataset["location"]
+                and v[scenario] is not None
             }
 
             excs = []
@@ -257,8 +280,6 @@ class Unfold:
 
             dataset["exchanges"].extend(excs)
 
-            self.factors = del_all(self.factors, flows)
-
         return database
 
 
@@ -274,16 +295,20 @@ class Unfold:
                 s: deepcopy(self.database) for s in scenarios_to_keep
             }
 
+
         scenarios_to_leave_out = list(
             set(s["name"] for s in self.scenarios) - set(scenarios_to_keep)
         )
         self.scenario_df = pd.DataFrame(
             self.package.get_resource("scenario_data").read(keyed=True)
         )
+
         self.scenario_df = self.scenario_df.loc[
             (self.scenario_df["flow type"] != "production")
         ]
         self.scenario_df = self.scenario_df.drop(scenarios_to_leave_out, axis=1)
+        self.scenario_df = self.scenario_df.replace("None", None)
+        self.scenario_df = self.scenario_df.replace({np.nan: None})
         self.scenario_df["from categories"] = self.scenario_df["from categories"].apply(
             lambda x: literal_eval(str(x))
         )
@@ -317,9 +342,8 @@ class Unfold:
     def format_superstructure_dataframe(self, scenarios: List[int]):
         """Formats the superstructure dataframe."""
 
-        scenarios = scenarios or list(range(len(self.scenarios)))
         self.format_dataframe(scenarios=scenarios, superstructure=True)
-
+        scenarios = scenarios or list(range(len(self.scenarios)))
         scenarios = [self.scenarios[i]["name"] for i in scenarios]
 
         self.factors = self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
@@ -347,6 +371,17 @@ class Unfold:
                                 self.factors[flow_id][key] = float(value) * _c(
                                     float(exc["amount"])
                                 )
+                                self.factors[flow_id][key] = None
+
+                    if not exc.get("input"):
+                        exc["input"] = self.dependency_mapping[
+                            (
+                                exc["name"],
+                                exc.get("product"),
+                                exc.get("location"),
+                                exc.get("categories"),
+                            )
+                        ]
 
         self.scenario_df = pd.DataFrame.from_dict(self.factors).T.reset_index()
         self.scenario_df.columns = [
@@ -390,7 +425,6 @@ class Unfold:
             ),
             axis=1,
         )
-
 
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "technosphere"), "from database"
@@ -459,12 +493,13 @@ class Unfold:
 
         if not superstructure:
             for scenario, database in self.databases_to_export.items():
+
                 change_db_name(database, scenario)
+                check_exchanges_input(database, self.dependency_mapping)
                 link_internal(database)
                 check_internal_linking(database)
                 check_duplicate_codes(database)
                 correct_fields_format(database, scenario)
-                remove_unused_fields(database)
                 print(f"Writing database for scenario {scenario}...")
                 UnfoldExporter(scenario, database).write_database()
 
@@ -490,11 +525,11 @@ class Unfold:
             print("")
             print("Writing superstructure database...")
             change_db_name(self.database, self.package.descriptor["name"])
+            self.database = check_exchanges_input(self.database, self.dependency_mapping)
             link_internal(self.database)
             check_internal_linking(self.database)
             check_duplicate_codes(self.database)
             correct_fields_format(self.database, self.package.descriptor["name"])
-            remove_unused_fields(self.database)
             UnfoldExporter(
                 self.package.descriptor["name"], self.database
             ).write_database()

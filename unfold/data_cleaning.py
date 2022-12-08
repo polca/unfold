@@ -52,13 +52,54 @@ def remove_missing_fields(data: List[dict]) -> List[dict]:
     Remove any field that does not have information.
     """
 
+    FORBIDDEN_FIELDS_TECH = [
+        "categories",
+    ]
+
+    FORBIDDEN_FIELDS_BIO = [
+        "location",
+    ]
+
+    def clean_up(exc):
+
+        for field in list(exc.keys()):
+            if exc[field] is None or exc[field] == "None":
+                del exc[field]
+            if exc["type"] == "biosphere" and field in FORBIDDEN_FIELDS_BIO:
+                del exc[field]
+            if exc["type"] == "technosphere" and field in FORBIDDEN_FIELDS_TECH:
+                del exc[field]
+
+        return exc
+
     for dataset in data:
         for key, value in list(dataset.items()):
             if not value:
                 del dataset[key]
 
+        dataset["exchanges"] = [clean_up(exc) for exc in dataset["exchanges"]]
+
     return data
 
+def check_exchanges_input(database, input_mapping):
+    """
+    Checks that all biosphere exchanges are given an input code
+
+    """
+    for dataset in database:
+        for exc in dataset["exchanges"]:
+            if exc["type"] == "biosphere":
+                if "input" not in exc or exc.get("input") is None:
+                    exc["input"] = input_mapping.get(
+                        (
+                            exc["name"],
+                            exc.get("product"),
+                            exc.get("location"),
+                            exc.get("categories"),
+                        )
+                    )
+
+    return database
 
 def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[dict]:
     """Add links for biosphere exchanges to :attr:`import_db`
@@ -268,21 +309,6 @@ def remove_categories_for_technosphere_flows(data):
             if y["type"] in ["technosphere", "production"]:
                 if "categories" in y:
                     del y["categories"]
-    return data
-
-
-def remove_unused_fields(data: list) -> list:
-    """
-    Remove fields wich have no values from each dataset in database.
-    :param data: database to check
-    :return: database with unused fields removed
-    """
-
-    for dataset in data:
-        for key in list(dataset.keys()):
-            if not dataset[key]:
-                del dataset[key]
-
     return data
 
 
