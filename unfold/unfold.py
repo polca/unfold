@@ -7,12 +7,12 @@ from ast import literal_eval
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Union
-import pyprind
 
 import bw2data
 import bw2io
 import numpy as np
 import pandas as pd
+import pyprind
 from datapackage import Package
 from prettytable import PrettyTable
 from wurst import extract_brightway2_databases
@@ -34,6 +34,8 @@ from .data_cleaning import (
 )
 from .export import UnfoldExporter
 from .utils import HiddenPrints
+from .fold import get_outdated_flows
+from .utils import HiddenPrints
 
 
 def _c(value):
@@ -41,6 +43,7 @@ def _c(value):
     if value == 0:
         return 1
     return value
+
 
 def del_all(mapping, to_remove):
     """Remove list of elements from mapping."""
@@ -282,7 +285,6 @@ class Unfold:
 
         return database
 
-
     def format_dataframe(
         self, scenarios: List[int] = None, superstructure: bool = False
     ):
@@ -346,7 +348,9 @@ class Unfold:
         scenarios = scenarios or list(range(len(self.scenarios)))
         scenarios = [self.scenarios[i]["name"] for i in scenarios]
 
-        self.factors = self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
+        self.factors = (
+            self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
+        )
         existing_exchanges = []
 
         for dataset in self.database:
@@ -453,11 +457,7 @@ class Unfold:
 
         print("Building superstructure database...")
 
-        self.database = self.add_exchanges_to_database(
-            self.database,
-            scenarios[0]
-        )
-
+        self.database = self.add_exchanges_to_database(self.database, scenarios[0])
 
     def unfold(
         self,
