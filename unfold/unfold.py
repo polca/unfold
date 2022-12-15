@@ -2,17 +2,18 @@
 Contains the Unfold class, to extract datapackage files.
 
 """
-
+import copy
 from ast import literal_eval
-from copy import deepcopy
 from pathlib import Path
 from typing import List, Union
-
+from collections import defaultdict
 import bw2data
 import bw2io
 import numpy as np
 import pandas as pd
-import pyprind
+import sparse
+import uuid
+from scipy import sparse as nsp
 from datapackage import Package
 from prettytable import PrettyTable
 from wurst import extract_brightway2_databases
@@ -30,11 +31,9 @@ from .data_cleaning import (
     correct_fields_format,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    check_exchanges_input
+    check_exchanges_input,
 )
 from .export import UnfoldExporter
-from .utils import HiddenPrints
-from .fold import get_outdated_flows
 from .utils import HiddenPrints
 
 
@@ -57,6 +56,9 @@ class Unfold:
     """Extracts datapackage files."""
 
     def __init__(self, path: Union[str, Path]):
+        self.dict_meta = None
+        self.acts_indices = None
+        self.reversed_acts_indices = None
         self.path = path
         self.package = Package(self.path)
         self.dependencies = self.package.descriptor["dependencies"]
@@ -147,8 +149,6 @@ class Unfold:
             }
         )
 
-
-
     def extract_source_database(self):
         """Extracts the source database."""
         for dependency in self.dependencies:
@@ -173,117 +173,272 @@ class Unfold:
         print("Extracting additional inventories...")
         with HiddenPrints():
             i = bw2io.CSVImporter(self.package.get_resource("inventories").source)
+            i.strategies = i.strategies[:4]
             i.apply_strategies()
-
-        i.data = self.clean_imported_inventory(i.data)
+            i.data = self.clean_imported_inventory(i.data)
 
         self.database.extend(i.data)
         self.database = change_db_name(self.database, self.package.descriptor["name"])
         self.build_mapping_for_dependencies(self.database)
+        self.store_datasets_metadata()
 
+    def generate_factors(self):
+        """Generates the factors."""
+        self.factors = (
+            self.scenario_df.groupby("flow id")
+            .sum(numeric_only=True)
+            .to_dict("index")
+        )
 
-    def adjust_exchanges(self):
-        """Adjusts the exchanges."""
+    def get_list_unique_exchanges(self, databases):
 
-        self.factors = self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
+        # get all unique exchanges
+        # for each dataset in database
+        # for each database in databases
 
-        for scenario, database in self.databases_to_export.items():
-            print(f"Creating database for scenario {scenario}...")
-            for dataset in database:
-                for exc in dataset["exchanges"]:
-                    if exc["type"] != "production":
-
-                        flow_id = (
-                            dataset["name"],
-                            dataset["reference product"],
-                            dataset["location"],
-                            exc["name"],
-                            exc.get("product"),
-                            exc.get("location"),
-                            exc.get("categories"),
-                            exc["unit"],
-                            exc["type"],
-                        )
-                        if flow_id in self.factors:
-                            if scenario in self.factors[flow_id]:
-                                if self.factors[flow_id][scenario] is not None:
-                                    exc["amount"] = _c(float(exc["amount"])) * float(
-                                        self.factors[flow_id][scenario]
-                                    )
-                                    self.factors[flow_id][scenario] = None
-
-                        if not exc.get("input"):
-                            exc["input"] = self.dependency_mapping[
-                                (
-                                    exc["name"],
-                                    exc.get("product"),
-                                    exc.get("location"),
-                                    exc.get("categories"),
-                                )
-                            ]
-
-
-            # check if there are still exchange to add
-            self.databases_to_export[scenario] = self.add_exchanges_to_database(
-                database, scenario
+        return list(
+            set(
+                [
+                    (
+                        exchange["name"],
+                        exchange.get("product"),
+                        exchange.get("categories"),
+                        exchange.get("location"),
+                        exchange.get("unit"),
+                        exchange.get("type"),
+                    )
+                    for database in databases
+                    for dataset in database
+                    for exchange in dataset["exchanges"]
+                ]
             )
+        )
 
 
-    def add_exchanges_to_database(self, database: List[dict], scenario: str):
+    def store_datasets_metadata(self):
+
+        # store the metadata in a dictionary
+        self.dict_meta = {
+            (
+                dataset["name"],
+                dataset["reference product"],
+                None,
+                dataset["location"],
+                dataset["unit"],
+                "production",
+            ): {
+                key: values
+                for key, values in dataset.items()
+                if key
+                   not in [
+                       "exchanges",
+                       "code",
+                       "name",
+                       "reference product",
+                       "location",
+                       "unit",
+                       "database",
+                   ]
+            }
+            for dataset in self.database
+        }
+    def generate_activities_indices(self):
+        """Generates the activities indices."""
+        list_unique_acts = self.get_list_unique_exchanges(databases=[self.database])
+
+        # add additional exchanges
+        for act in list_unique_acts:
+            if act[-1] == "production":
+                new_id = list(act)
+                new_id[-1] = "technosphere"
+                new_id = tuple(new_id)
+                if new_id not in list_unique_acts:
+                    list_unique_acts.append(new_id)
+
+        self.acts_indices = dict(enumerate(list_unique_acts))
+        self.reversed_acts_indices = {act: i for i, act in enumerate(list_unique_acts)}
+
+
+    def fetch_exchange_code(self, name, ref, loc):
+
+        if (name, ref, loc, None) in self.dependency_mapping:
+            return self.dependency_mapping[(name, ref, loc, None)][1]
+        else:
+            return str(uuid.uuid4().hex)
+
+    def get_exchange(
+            self,
+            ind: int,
+            amount: float = 1.0,
+            scenario_name: str = None,
+    ):
         """
-        Add an exchange to `database`.
-        :param database: database to add an exchange to.
-        :param flow_id: id of the exchanges
-        :param factor: multiplication factor
-        :return: database with exchange added
-        """
+        Return an exchange in teh form of a dictionary.
+        If it has a value for "categories", we inder it is a biosphere flow.
+        If not, it is either a technosphere or production flow.
 
-        list_ds_to_modify = {
-            (a[0], a[1], a[2])
-            for a in self.factors
+        :param ind: index of the exchange
+        :param acts_ind: dictionary of activities
+        :param amount: amount of the exchange
+        :param production: boolean indicating if it is a production flow
+        :return: dictionary of the exchange
+        """
+        name, ref, cat, loc, unit, flow_type = self.acts_indices[ind]
+        _ = lambda x: x if x != 0 else 1.0
+        return {
+            "name": name,
+            "product": ref,
+            "unit": unit,
+            "location": loc,
+            "categories": cat,
+            "type": flow_type,
+            "amount": amount if flow_type != "production" else _(amount),
+            "input": self.dependency_mapping[(name, ref, loc, cat)]
+            if flow_type == "biosphere"
+            else (
+                scenario_name,
+                self.fetch_exchange_code(name, ref, loc),
+            ),
         }
 
-        datasets = [
-            dataset for dataset in database
-            if (
-                   dataset["name"],
-                   dataset["reference product"],
-                   dataset["location"]
-               )
-               in list_ds_to_modify
-        ]
+    def populate_sparse_matrix(self):
 
-        for dataset in pyprind.prog_percent(datasets):
+        self.generate_activities_indices()
 
-            flows = {k: v for k, v in self.factors.items()
-                if k[0] == dataset["name"]
-                and k[1] == dataset["reference product"]
-                and k[2] == dataset["location"]
-                and v[scenario] is not None
-            }
+        m = nsp.lil_matrix(
+            (len(self.acts_indices), len(self.acts_indices))
+        )
 
-            excs = []
+        for ds in self.database:
+            for exc in ds["exchanges"]:
+                s = (
+                    exc["name"],
+                    exc.get("product"),
+                    exc.get("categories"),
+                    exc.get("location"),
+                    exc["unit"],
+                    exc["type"],
+                )
 
-            for flow, factor in flows.items():
+                c = (
+                    ds["name"],
+                    ds.get("reference product"),
+                    ds.get("categories"),
+                    ds.get("location"),
+                    ds["unit"],
+                    "production"
+                )
 
-                exc = {
-                    "amount": float(factor[scenario]),
-                    "type": flow[-1],
-                    "name": flow[3],
-                    "product": flow[4],
-                    "location": flow[5],
-                    "categories": flow[6],
-                    "unit": flow[7],
-                    "input": self.dependency_mapping.get(
-                        (flow[3], flow[4], flow[5], flow[6])
-                    ),
-                }
+                m[
+                    self.reversed_acts_indices[s],
+                    self.reversed_acts_indices[c]
+                ] += exc["amount"]
 
-                excs.append(exc)
 
-            dataset["exchanges"].extend(excs)
+        return m
 
-        return database
+    def write_scaling_factors_in_matrix(self, matrix, scenario_name):
+
+        _ = lambda x: x if x != 0 else 1.0
+
+        for flow_id, factor in self.factors.items():
+            c_name, c_prod, c_loc, c_unit = list(flow_id)[:4]
+            s_name, s_prod, s_loc, s_cat, s_unit, s_type = list(flow_id)[4:]
+
+            consumer_idx = self.reversed_acts_indices[(
+                c_name,
+                c_prod,
+                None,
+                c_loc,
+                c_unit,
+                "production",
+            )]
+
+            supplier_id = (
+                s_name,
+                s_prod,
+                s_cat,
+                s_loc,
+                s_unit,
+                s_type,
+            )
+            supplier_idx = self.reversed_acts_indices[supplier_id]
+
+
+            matrix[supplier_idx, consumer_idx] = (
+                factor[scenario_name]
+                * _(matrix[supplier_idx, consumer_idx])
+            )
+
+        return matrix
+
+    def get_act_dict_structure(self, ind: int, scenario_name: str) -> dict:
+        """
+        Get the structure of the activity/dataset dictionary.
+        :param ind: index of the activity
+        :param acts_ind: dictionary of activities
+        :return: dictionary of the activity
+
+        """
+        name, ref, _, loc, unit, _ = self.acts_indices[ind]
+        code = self.fetch_exchange_code(name, ref, loc)
+
+        return {
+            "name": name,
+            "reference product": ref,
+            "unit": unit,
+            "location": loc,
+            "database": scenario_name,
+            "code": code,
+            "parameters": [],
+            "exchanges": [],
+        }
+
+    def generate_single_databases(self) -> list:
+
+        m = self.populate_sparse_matrix()
+
+        matrix = sparse.stack(
+            [
+                sparse.COO(self.write_scaling_factors_in_matrix(copy.deepcopy(m), s["name"]))
+                for _, s in enumerate(self.scenarios)
+            ], axis=-1
+        )
+
+        databases = []
+
+        for ix, i in enumerate(self.scenarios):
+
+            print(f"Generating database for scenario {i['name']}...")
+
+            non_zero_indices = sparse.argwhere(matrix[..., ix].T != 0)
+            non_zero_indices = list(map(tuple, non_zero_indices))
+
+            inds_d = defaultdict(list)
+            for ind in non_zero_indices:
+                inds_d[ind[0]].append(ind[1])
+
+            new_db = []
+
+            for k, v in inds_d.items():
+                act = self.get_act_dict_structure(
+                    ind=k,
+                    scenario_name=i["name"],
+                )
+                act.update(self.dict_meta[self.acts_indices[k]])
+
+                act["exchanges"].extend(
+                    self.get_exchange(
+                        ind=j,
+                        amount=matrix[j, k, ix],
+                        scenario_name=i["name"]
+                    )
+                    for j in v
+                )
+                new_db.append(act)
+            databases.append(new_db)
+
+        return databases
 
     def format_dataframe(
         self, scenarios: List[int] = None, superstructure: bool = False
@@ -291,12 +446,8 @@ class Unfold:
         """Formats the dataframe."""
         scenarios = scenarios or list(range(len(self.scenarios)))
         scenarios_to_keep = [self.scenarios[i]["name"] for i in scenarios]
-
-        if not superstructure:
-            self.databases_to_export = {
-                s: deepcopy(self.database) for s in scenarios_to_keep
-            }
-
+        # remove unused scenarios from self.scenarios
+        self.scenarios = [s for s in self.scenarios if s["name"] in scenarios_to_keep]
 
         scenarios_to_leave_out = list(
             set(s["name"] for s in self.scenarios) - set(scenarios_to_keep)
@@ -332,73 +483,63 @@ class Unfold:
                 self.scenario_df["to activity name"],
                 self.scenario_df["to reference product"],
                 self.scenario_df["to location"],
+                self.scenario_df["to unit"],
                 self.scenario_df["from activity name"],
                 self.scenario_df["from reference product"],
                 self.scenario_df["from location"],
                 self.scenario_df["from categories"],
-                self.scenario_df["unit"],
+                self.scenario_df["from unit"],
                 self.scenario_df["flow type"],
             )
         )
 
-    def format_superstructure_dataframe(self, scenarios: List[int]):
+    def format_superstructure_dataframe(self):
         """Formats the superstructure dataframe."""
 
-        self.format_dataframe(scenarios=scenarios, superstructure=True)
-        scenarios = scenarios or list(range(len(self.scenarios)))
-        scenarios = [self.scenarios[i]["name"] for i in scenarios]
+        matrix = self.populate_sparse_matrix()
 
-        self.factors = (
-            self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
-        )
-        existing_exchanges = []
+        _ = lambda x: x if x != 0 else 1.0
 
-        for dataset in self.database:
-            for exc in dataset["exchanges"]:
-                if exc["type"] != "production":
-                    flow_id = (
-                        dataset["name"],
-                        dataset["reference product"],
-                        dataset["location"],
-                        exc["name"],
-                        exc.get("product"),
-                        exc.get("location"),
-                        exc.get("categories"),
-                        exc["unit"],
-                        exc["type"],
-                    )
+        for flow_id, factor in self.factors.items():
+            c_name, c_prod, c_loc, c_unit = list(flow_id)[:4]
+            s_name, s_prod, s_loc, s_cat, s_unit, s_type = list(flow_id)[4:]
 
-                    if flow_id in self.factors:
-                        existing_exchanges.append(flow_id)
-                        for key, value in self.factors[flow_id].items():
-                            if value != 0.0:
-                                self.factors[flow_id][key] = float(value) * _c(
-                                    float(exc["amount"])
-                                )
-                                self.factors[flow_id][key] = None
+            consumer_idx = self.reversed_acts_indices[(
+                c_name,
+                c_prod,
+                None,
+                c_loc,
+                c_unit,
+                "production",
+            )]
 
-                    if not exc.get("input"):
-                        exc["input"] = self.dependency_mapping[
-                            (
-                                exc["name"],
-                                exc.get("product"),
-                                exc.get("location"),
-                                exc.get("categories"),
-                            )
-                        ]
+            supplier_id = (
+                s_name,
+                s_prod,
+                s_cat,
+                s_loc,
+                s_unit,
+                s_type,
+            )
+            supplier_idx = self.reversed_acts_indices[supplier_id]
+
+            for scenario, val in factor.items():
+                factor[scenario] = val * _(matrix[consumer_idx, supplier_idx])
+
 
         self.scenario_df = pd.DataFrame.from_dict(self.factors).T.reset_index()
         self.scenario_df.columns = [
             "to activity name",
             "to reference product",
             "to location",
+            "to unit",
             "from activity name",
             "from reference product",
             "from location",
             "from categories",
-            "unit",
+            "from unit",
             "flow type",
-        ] + scenarios
+        ] + [s["name"] for s in self.scenarios]
 
         self.scenario_df["to database"] = self.package.descriptor["name"]
         self.scenario_df["to categories"] = None
@@ -452,12 +593,9 @@ class Unfold:
                 "to key",
                 "flow type",
             ]
-            + scenarios
+            + [s["name"] for s in self.scenarios]
         ]
 
-        print("Building superstructure database...")
-
-        self.database = self.add_exchanges_to_database(self.database, scenarios[0])
 
     def unfold(
         self,
@@ -467,17 +605,24 @@ class Unfold:
     ):
         """Extracts specific scenarios."""
 
-        if not self.database:
-            self.check_dependencies(dependencies)
-            self.extract_source_database()
-            self.extract_additional_inventories()
+        self.check_dependencies(dependencies)
+        self.extract_source_database()
+        self.extract_additional_inventories()
+
+        self.format_dataframe(scenarios=scenarios, superstructure=superstructure)
+        self.generate_factors()
 
         if not superstructure:
-            self.format_dataframe(scenarios)
-            self.adjust_exchanges()
+            self.databases_to_export = {
+                k: v for k, v in
+                zip(
+                    [s["name"] for s in self.scenarios],
+                    self.generate_single_databases()
+                )
+            }
         else:
             print("Writing scenario difference file...")
-            self.format_superstructure_dataframe(scenarios)
+            self.format_superstructure_dataframe()
 
         self.write(superstructure=superstructure)
 
@@ -493,9 +638,8 @@ class Unfold:
 
         if not superstructure:
             for scenario, database in self.databases_to_export.items():
-
-                change_db_name(database, scenario)
-                check_exchanges_input(database, self.dependency_mapping)
+                change_db_name(data=database, name=scenario)
+                #check_exchanges_input(database, self.dependency_mapping)
                 link_internal(database)
                 check_internal_linking(database)
                 check_duplicate_codes(database)
@@ -515,7 +659,7 @@ class Unfold:
                     f"{self.package.descriptor['name']}.xlsx"
                 ) as writer:
                     for i in range(0, len(self.scenario_df), GROUP_LENGTH):
-                        self.scenario_df[i : i + GROUP_LENGTH].to_excel(
+                        self.scenario_df[i: i + GROUP_LENGTH].to_excel(
                             writer, sheet_name=f"Row {i}", index=False, header=True
                         )
 
@@ -525,7 +669,9 @@ class Unfold:
             print("")
             print("Writing superstructure database...")
             change_db_name(self.database, self.package.descriptor["name"])
-            self.database = check_exchanges_input(self.database, self.dependency_mapping)
+            self.database = check_exchanges_input(
+                self.database, self.dependency_mapping
+            )
             link_internal(self.database)
             check_internal_linking(self.database)
             check_duplicate_codes(self.database)

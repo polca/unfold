@@ -60,7 +60,8 @@ def remove_missing_fields(data: List[dict]) -> List[dict]:
         "location",
     ]
 
-    def clean_up(exc):
+    def clean_up(exc: dict) -> dict:
+        """Cleans up an exchange"""
 
         for field in list(exc.keys()):
             if exc[field] is None or exc[field] == "None":
