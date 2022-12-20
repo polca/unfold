@@ -82,6 +82,7 @@ def remove_missing_fields(data: List[dict]) -> List[dict]:
 
     return data
 
+
 def check_exchanges_input(database, input_mapping):
     """
     Checks that all biosphere exchanges are given an input code
@@ -101,6 +102,7 @@ def check_exchanges_input(database, input_mapping):
                     )
 
     return database
+
 
 def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[dict]:
     """Add links for biosphere exchanges to :attr:`import_db`
