@@ -3,19 +3,20 @@ Contains the Unfold class, to extract datapackage files.
 
 """
 import copy
+import uuid
 from ast import literal_eval
+from collections import defaultdict
 from pathlib import Path
 from typing import List, Union
-from collections import defaultdict
+
 import bw2data
 import bw2io
 import numpy as np
 import pandas as pd
 import sparse
-import uuid
-from scipy import sparse as nsp
 from datapackage import Package
 from prettytable import PrettyTable
+from scipy import sparse as nsp
 from wurst import extract_brightway2_databases
 from wurst.linking import (
     change_db_name,
@@ -27,11 +28,11 @@ from wurst.linking import (
 from .data_cleaning import (
     add_biosphere_links,
     add_product_field_to_exchanges,
+    check_exchanges_input,
     check_for_duplicates,
     correct_fields_format,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    check_exchanges_input,
 )
 from .export import UnfoldExporter
 from .utils import HiddenPrints
@@ -185,9 +186,7 @@ class Unfold:
     def generate_factors(self):
         """Generates the factors."""
         self.factors = (
-            self.scenario_df.groupby("flow id")
-            .sum(numeric_only=True)
-            .to_dict("index")
+            self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
         )
 
     def get_list_unique_exchanges(self, databases):
@@ -214,7 +213,6 @@ class Unfold:
             )
         )
 
-
     def store_datasets_metadata(self):
 
         # store the metadata in a dictionary
@@ -230,18 +228,19 @@ class Unfold:
                 key: values
                 for key, values in dataset.items()
                 if key
-                   not in [
-                       "exchanges",
-                       "code",
-                       "name",
-                       "reference product",
-                       "location",
-                       "unit",
-                       "database",
-                   ]
+                not in [
+                    "exchanges",
+                    "code",
+                    "name",
+                    "reference product",
+                    "location",
+                    "unit",
+                    "database",
+                ]
             }
             for dataset in self.database
         }
+
     def generate_activities_indices(self):
         """Generates the activities indices."""
         list_unique_acts = self.get_list_unique_exchanges(databases=[self.database])
@@ -258,7 +257,6 @@ class Unfold:
         self.acts_indices = dict(enumerate(list_unique_acts))
         self.reversed_acts_indices = {act: i for i, act in enumerate(list_unique_acts)}
 
-
     def fetch_exchange_code(self, name, ref, loc):
 
         if (name, ref, loc, None) in self.dependency_mapping:
@@ -267,10 +265,10 @@ class Unfold:
             return str(uuid.uuid4().hex)
 
     def get_exchange(
-            self,
-            ind: int,
-            amount: float = 1.0,
-            scenario_name: str = None,
+        self,
+        ind: int,
+        amount: float = 1.0,
+        scenario_name: str = None,
     ):
         """
         Return an exchange in teh form of a dictionary.
@@ -305,9 +303,7 @@ class Unfold:
 
         self.generate_activities_indices()
 
-        m = nsp.lil_matrix(
-            (len(self.acts_indices), len(self.acts_indices))
-        )
+        m = nsp.lil_matrix((len(self.acts_indices), len(self.acts_indices)))
 
         for ds in self.database:
             for exc in ds["exchanges"]:
@@ -326,13 +322,12 @@ class Unfold:
                     ds.get("categories"),
                     ds.get("location"),
                     ds["unit"],
-                    "production"
+                    "production",
                 )
 
-                m[
-                    self.reversed_acts_indices[s],
-                    self.reversed_acts_indices[c]
-                ] += exc["amount"]
+                m[self.reversed_acts_indices[s], self.reversed_acts_indices[c]] += exc[
+                    "amount"
+                ]
 
         return m
 
@@ -344,14 +339,16 @@ class Unfold:
             c_name, c_prod, c_loc, c_unit = list(flow_id)[:4]
             s_name, s_prod, s_loc, s_cat, s_unit, s_type = list(flow_id)[4:]
 
-            consumer_idx = self.reversed_acts_indices[(
-                c_name,
-                c_prod,
-                None,
-                c_loc,
-                c_unit,
-                "production",
-            )]
+            consumer_idx = self.reversed_acts_indices[
+                (
+                    c_name,
+                    c_prod,
+                    None,
+                    c_loc,
+                    c_unit,
+                    "production",
+                )
+            ]
 
             supplier_id = (
                 s_name,
@@ -363,9 +360,8 @@ class Unfold:
             )
             supplier_idx = self.reversed_acts_indices[supplier_id]
 
-            matrix[supplier_idx, consumer_idx] = (
-                factor[scenario_name]
-                * _(matrix[supplier_idx, consumer_idx])
+            matrix[supplier_idx, consumer_idx] = factor[scenario_name] * _(
+                matrix[supplier_idx, consumer_idx]
             )
 
         return matrix
@@ -391,7 +387,6 @@ class Unfold:
             "parameters": [],
             "exchanges": [],
         }
-
 
     def build_superstructure_database(self, matrix):
 
@@ -426,7 +421,7 @@ class Unfold:
                 self.get_exchange(
                     ind=j,
                     amount=matrix[j, k, 0],
-                    scenario_name=self.package.descriptor["name"]
+                    scenario_name=self.package.descriptor["name"],
                 )
                 for j in v
             )
@@ -434,7 +429,9 @@ class Unfold:
 
         return new_db
 
-    def build_single_databases(self, matrix, databases_to_build: List[dict]) -> list[list[dict]]:
+    def build_single_databases(
+        self, matrix, databases_to_build: List[dict]
+    ) -> list[list[dict]]:
 
         databases_to_return = []
 
@@ -460,9 +457,7 @@ class Unfold:
 
                 act["exchanges"].extend(
                     self.get_exchange(
-                        ind=j,
-                        amount=matrix[j, k, ix],
-                        scenario_name=i["name"]
+                        ind=j, amount=matrix[j, k, ix], scenario_name=i["name"]
                     )
                     for j in v
                 )
@@ -476,14 +471,17 @@ class Unfold:
         m = self.populate_sparse_matrix()
 
         matrix = sparse.stack(
-            [sparse.COO(m)] + [
-                sparse.COO(self.write_scaling_factors_in_matrix(copy.deepcopy(m), s["name"]))
+            [sparse.COO(m)]
+            + [
+                sparse.COO(
+                    self.write_scaling_factors_in_matrix(copy.deepcopy(m), s["name"])
+                )
                 for _, s in enumerate(self.scenarios)
-            ], axis=-1
+            ],
+            axis=-1,
         )
 
         return self.build_superstructure_database(matrix=matrix)
-
 
     def generate_single_databases(self) -> list:
 
@@ -491,16 +489,17 @@ class Unfold:
 
         matrix = sparse.stack(
             [
-                sparse.COO(self.write_scaling_factors_in_matrix(copy.deepcopy(m), s["name"]))
+                sparse.COO(
+                    self.write_scaling_factors_in_matrix(copy.deepcopy(m), s["name"])
+                )
                 for _, s in enumerate(self.scenarios)
-            ], axis=-1
+            ],
+            axis=-1,
         )
 
         return self.build_single_databases(
-            matrix=matrix,
-            databases_to_build=self.scenarios
+            matrix=matrix, databases_to_build=self.scenarios
         )
-
 
     def format_dataframe(
         self, scenarios: List[int] = None, superstructure: bool = False
@@ -566,14 +565,16 @@ class Unfold:
             c_name, c_prod, c_loc, c_unit = list(flow_id)[:4]
             s_name, s_prod, s_loc, s_cat, s_unit, s_type = list(flow_id)[4:]
 
-            consumer_idx = self.reversed_acts_indices[(
-                c_name,
-                c_prod,
-                None,
-                c_loc,
-                c_unit,
-                "production",
-            )]
+            consumer_idx = self.reversed_acts_indices[
+                (
+                    c_name,
+                    c_prod,
+                    None,
+                    c_loc,
+                    c_unit,
+                    "production",
+                )
+            ]
 
             supplier_id = (
                 s_name,
@@ -587,7 +588,6 @@ class Unfold:
 
             for scenario, val in factor.items():
                 factor[scenario] = val * _(matrix[consumer_idx, supplier_idx])
-
 
         self.scenario_df = pd.DataFrame.from_dict(self.factors).T.reset_index()
         self.scenario_df.columns = [
@@ -658,7 +658,6 @@ class Unfold:
             + [s["name"] for s in self.scenarios]
         ]
 
-
     def unfold(
         self,
         scenarios: List[int] = None,
@@ -676,10 +675,10 @@ class Unfold:
 
         if not superstructure:
             self.databases_to_export = {
-                k: v for k, v in
-                zip(
+                k: v
+                for k, v in zip(
                     [s["name"] for s in self.scenarios],
-                    self.generate_single_databases()
+                    self.generate_single_databases(),
                 )
             }
         else:
@@ -702,7 +701,7 @@ class Unfold:
         if not superstructure:
             for scenario, database in self.databases_to_export.items():
                 change_db_name(data=database, name=scenario)
-                #check_exchanges_input(database, self.dependency_mapping)
+                # check_exchanges_input(database, self.dependency_mapping)
                 link_internal(database)
                 check_internal_linking(database)
                 check_duplicate_codes(database)
@@ -722,7 +721,7 @@ class Unfold:
                     f"{self.package.descriptor['name']}.xlsx"
                 ) as writer:
                     for i in range(0, len(self.scenario_df), GROUP_LENGTH):
-                        self.scenario_df[i: i + GROUP_LENGTH].to_excel(
+                        self.scenario_df[i : i + GROUP_LENGTH].to_excel(
                             writer, sheet_name=f"Row {i}", index=False, header=True
                         )
 

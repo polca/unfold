@@ -195,8 +195,7 @@ class Fold:
             databases_descriptions = dict(zip(databases_to_fold, descriptions))
 
         assert all(
-            database in available_databases
-            for database in databases_to_fold
+            database in available_databases for database in databases_to_fold
         ), "Database not found"
 
         self.identify_dependencies(databases_to_fold)
@@ -209,9 +208,7 @@ class Fold:
             "system model": source_database_system_model,
             "version": source_database_version,
         }
-        self.build_mapping_for_dependencies(
-            source_database_extracted
-        )
+        self.build_mapping_for_dependencies(source_database_extracted)
         print("Done!")
 
         print("Extracting databases to fold...")
@@ -224,9 +221,7 @@ class Fold:
                     "description": databases_descriptions[database],
                 }
             )
-            self.build_mapping_for_dependencies(
-                extracted_database
-            )
+            self.build_mapping_for_dependencies(extracted_database)
 
         print("Done!")
 
@@ -245,7 +240,6 @@ class Fold:
                     raise ValueError(
                         f"Database {dependency} also needed but not found."
                     )
-
 
         self.dependencies = {
             dependency
@@ -280,6 +274,7 @@ class Fold:
                 for dataset in database
             }
         )
+
     def get_list_unique_acts(self, scenarios: List[List[dict]]) -> list:
         """
         Get a list of unique activities from a list of databases
@@ -293,10 +288,18 @@ class Fold:
                 list_unique_acts.extend(
                     [
                         (
-                            self.rev_dependency_mapping.get(exchange.get("input"), (None,))[0],
-                            self.rev_dependency_mapping.get(exchange.get("input"), (None, None))[1],
-                            self.rev_dependency_mapping.get(exchange.get("input"), (None,))[-1],
-                            self.rev_dependency_mapping.get(exchange.get("input"), (None, None, None))[2],
+                            self.rev_dependency_mapping.get(
+                                exchange.get("input"), (None,)
+                            )[0],
+                            self.rev_dependency_mapping.get(
+                                exchange.get("input"), (None, None)
+                            )[1],
+                            self.rev_dependency_mapping.get(
+                                exchange.get("input"), (None,)
+                            )[-1],
+                            self.rev_dependency_mapping.get(
+                                exchange.get("input"), (None, None, None)
+                            )[2],
                             exchange["unit"],
                             exchange["type"],
                         )
@@ -570,8 +573,7 @@ class Fold:
         acts_ind = dict(enumerate(list_acts))
         acts_ind_rev = {value: key for key, value in acts_ind.items()}
         list_scenarios = ["original"] + [s["name"] for s in scenarios]
-        list_of_databases = [origin_db["database"]] + [a["database"]
-                                                       for a in scenarios]
+        list_of_databases = [origin_db["database"]] + [a["database"] for a in scenarios]
 
         matrices = {
             a: nsp.lil_matrix((len(list_acts), len(list_acts)))
@@ -619,9 +621,13 @@ class Fold:
                 for exc in dataset["exchanges"]:
                     exc_id = (
                         self.rev_dependency_mapping.get(exc.get("input"), (None,))[0],
-                        self.rev_dependency_mapping.get(exc.get("input"), (None, None))[1],
+                        self.rev_dependency_mapping.get(exc.get("input"), (None, None))[
+                            1
+                        ],
                         self.rev_dependency_mapping.get(exc.get("input"), (None,))[-1],
-                        self.rev_dependency_mapping.get(exc.get("input"), (None, None, None))[2],
+                        self.rev_dependency_mapping.get(
+                            exc.get("input"), (None, None, None)
+                        )[2],
                         exc["unit"],
                         exc["type"],
                     )
