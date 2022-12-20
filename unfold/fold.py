@@ -744,5 +744,3 @@ class Fold:
 
         # return the dataframe and the new db
         return df, new_db, list_acts
-
-
