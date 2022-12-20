@@ -334,7 +334,6 @@ class Unfold:
                     self.reversed_acts_indices[c]
                 ] += exc["amount"]
 
-
         return m
 
     def write_scaling_factors_in_matrix(self, matrix, scenario_name):
@@ -363,7 +362,6 @@ class Unfold:
                 s_type,
             )
             supplier_idx = self.reversed_acts_indices[supplier_id]
-
 
             matrix[supplier_idx, consumer_idx] = (
                 factor[scenario_name]
@@ -394,20 +392,53 @@ class Unfold:
             "exchanges": [],
         }
 
-    def generate_single_databases(self) -> list:
 
-        m = self.populate_sparse_matrix()
+    def build_superstructure_database(self, matrix):
 
-        matrix = sparse.stack(
-            [
-                sparse.COO(self.write_scaling_factors_in_matrix(copy.deepcopy(m), s["name"]))
-                for _, s in enumerate(self.scenarios)
-            ], axis=-1
-        )
+        print(f"Generating superstructure database...")
 
-        databases = []
+        # fetch non-zero indices of matrix 0
+        non_zero_indices = sparse.argwhere(matrix[..., 0].T != 0)
 
-        for ix, i in enumerate(self.scenarios):
+        # add non-zero indices of other matrices
+        for i in range(1, matrix.shape[-1]):
+            non_zero_indices = np.concatenate(
+                (non_zero_indices, sparse.argwhere(matrix[..., i].T != 0))
+            )
+
+        non_zero_indices = list(map(tuple, non_zero_indices))
+
+        inds_d = defaultdict(list)
+        for ind in non_zero_indices:
+            if ind[1] not in inds_d[ind[0]]:
+                inds_d[ind[0]].append(ind[1])
+
+        new_db = []
+
+        for k, v in inds_d.items():
+            act = self.get_act_dict_structure(
+                ind=k,
+                scenario_name=self.package.descriptor["name"],
+            )
+            act.update(self.dict_meta[self.acts_indices[k]])
+
+            act["exchanges"].extend(
+                self.get_exchange(
+                    ind=j,
+                    amount=matrix[j, k, 0],
+                    scenario_name=self.package.descriptor["name"]
+                )
+                for j in v
+            )
+            new_db.append(act)
+
+        return new_db
+
+    def build_single_databases(self, matrix, databases_to_build: List[dict]) -> list[list[dict]]:
+
+        databases_to_return = []
+
+        for ix, i in enumerate(databases_to_build):
 
             print(f"Generating database for scenario {i['name']}...")
 
@@ -436,9 +467,40 @@ class Unfold:
                     for j in v
                 )
                 new_db.append(act)
-            databases.append(new_db)
+            databases_to_return.append(new_db)
 
-        return databases
+        return databases_to_return
+
+    def generate_superstructure_database(self):
+
+        m = self.populate_sparse_matrix()
+
+        matrix = sparse.stack(
+            [sparse.COO(m)] + [
+                sparse.COO(self.write_scaling_factors_in_matrix(copy.deepcopy(m), s["name"]))
+                for _, s in enumerate(self.scenarios)
+            ], axis=-1
+        )
+
+        return self.build_superstructure_database(matrix=matrix)
+
+
+    def generate_single_databases(self) -> list:
+
+        m = self.populate_sparse_matrix()
+
+        matrix = sparse.stack(
+            [
+                sparse.COO(self.write_scaling_factors_in_matrix(copy.deepcopy(m), s["name"]))
+                for _, s in enumerate(self.scenarios)
+            ], axis=-1
+        )
+
+        return self.build_single_databases(
+            matrix=matrix,
+            databases_to_build=self.scenarios
+        )
+
 
     def format_dataframe(
         self, scenarios: List[int] = None, superstructure: bool = False
@@ -623,6 +685,7 @@ class Unfold:
         else:
             print("Writing scenario difference file...")
             self.format_superstructure_dataframe()
+            self.database = self.generate_superstructure_database()
 
         self.write(superstructure=superstructure)
 
