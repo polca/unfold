@@ -24,12 +24,15 @@ to reproduce the LCA database (provided they have the source database).
 It is based on the [brightway2](https://brightway.dev) framework.
 
 `unfold` is initially conceived to share `premise`-generated 
-databases ([link](https://github.com/polca/premise)), without sharing the underlying data which is under 
+databases ([link](https://github.com/polca/premise)), or any other
+databases that have been heavily modified and derived
+from a base which is under 
 restrictive licensing (i.e., ecoinvent).
 
 ## Limitations
 
 * only works with `brightway2` at the moment
+* only tested wih ecoinvent 3.6, 3.7 and 3.8 (but should be working with any other source database in principle)
 
 
 ## How to
@@ -39,6 +42,10 @@ restrictive licensing (i.e., ecoinvent).
 `unfold` is available on PyPI and can be installed with `pip`:
 
     pip install unfold
+
+It can also be installed from ``conda``:
+
+    conda install -c romainsacchi unfold
 
 
 ### Use
@@ -67,6 +74,9 @@ and their content.
     f.fold()
 ```
 
+The resulting data package is saved in the current directory
+and cna be shared with other users.
+
 #### unfold
 
 ``unfold`` can "unfold" a data package into one or several 
@@ -85,10 +95,14 @@ brightway2 databases.
     u.unfold()
 ```
 
+The file path given to the `Unfold` class can be either
+absolute or relative to the current directory, or even a URL.
+
+
 #### unfold a superstructure database (to be used with Activity Browser)
 
 ``unfold`` can "unfold" a data package into a superstructure database
-that can be used with the Activity Browser.
+that can be used with the [Activity Browser](https://github.com/LCA-ActivityBrowser/activity-browser).
 
 ```python
 
@@ -102,6 +116,10 @@ that can be used with the Activity Browser.
     u = Unfold("a package name.zip")
     u.unfold(superstructure=True)
 ```
+
+This outputs a superstructure database in your brightway2 project,
+as well as a scenario difference file (Excel) in the current working
+directory.
 
 ## Author
 

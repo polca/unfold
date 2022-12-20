@@ -466,7 +466,10 @@ class Unfold:
 
         return databases_to_return
 
-    def generate_superstructure_database(self):
+    def generate_superstructure_database(self) -> List[dict]:
+        """
+        Generate the superstructure database.
+        """
 
         m = self.populate_sparse_matrix()
 
@@ -483,7 +486,7 @@ class Unfold:
 
         return self.build_superstructure_database(matrix=matrix)
 
-    def generate_single_databases(self) -> list:
+    def generate_single_databases(self) -> List[List[dict]]:
 
         m = self.populate_sparse_matrix()
 
