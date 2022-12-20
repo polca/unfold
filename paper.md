@@ -1,5 +1,5 @@
 ---
-title: 'unfold: UNpacking For scenariO-based Lca Databases'
+title: '`unfold`: UNpacking oF scenariO-based Lca Databases'
 tags:
   - Python
   - life cycle assessment
@@ -11,7 +11,6 @@ tags:
 authors:
   - name: Romain Sacchi
     orcid: 0000-0003-1440-0905
-    equal-contrib: true
     affiliation: 1
 
 affiliations:
@@ -26,9 +25,9 @@ bibliography: paper.bib
 # Summary
 
 `unfold` is a Python package that allows sharing life-cycle databases based on
-licensed data (e.g., ecoinvent) without exposing it. 
+licensed data without exposing it. 
 It relies on the exchange of data packages that contain the differences between
-the databases to replicate and a source database (e.g., ecoinvent), as well as 
+the databases to replicate and the licensed database, as well as 
 a metadata file that describes the databases and their content. 
 Hence, `unfold` allows to unpack any number of databases and to fold them back 
 into a single data package, to easing the sharing and reproducibility of
@@ -41,7 +40,7 @@ Life-cycle assessment (LCA) consists in the quantification of the environmental
 impacts of a product or a process. It is a powerful tool to assess the
 environmental performance of products and processes, and to identify
 environmental hotspots. However, it is difficult to share LCA databases, 
-as they are often based on licensed data (e.g., ecoinvent [@Wernet:2016]). 
+as they are often based on a licensed data source such as ecoinvent [@Wernet:2016]. 
 `unfold` allows to share databases without exposing the source
 data, by sharing instead data packages that allows other users to reproduce the
 LCA database (provided they have the source database registered locally).
@@ -52,10 +51,10 @@ or those regularly produced within the field of prospective LCA (where the need 
 modify extensively the source database is often required), such as those produced
 by Mendoza et al. [@Mendoza:2018]
 
-![Workflow for database sharing using `unfold` data packages.\label{fig:workflow}](assets/flow_diagram.png)
+![Workflow for sharing databases using `unfold` data packages.\label{fig:workflow}](assets/flow_diagram.png)
 
 Scaling factors between the exchanges of the databases to replicate 
-and the exchanges of the source database are
+and the exchanges of the licensed database are
 calculated and stored in a data package, along with any extra datasets, as
 well as a metadata file that describes the databases and their content 
 (see \autoref{fig:workflow}).
