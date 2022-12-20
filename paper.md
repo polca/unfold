@@ -32,7 +32,7 @@ The data package also contains a metadata file that describes the databases,
 the user that generated them, etc. 
 `unfold` allows to package and unfold any number of databases 
 from a single data package, to ease the sharing and reproducibility of
-life-cycle assessment databases.
+life-cycle assessment databases which partly build on a license data source.
 
 
 # Statement of need
@@ -43,9 +43,9 @@ processes, which interdependency and interactions with the greater environment
 form a large input-output matrix. However, these matrices, often modified to fit
 the need of a study, are difficult to share, as they often build on a licensed data 
 source, such as that of ecoinvent [@Wernet:2016]. 
-`unfold` allows to share databases without exposing the source
-data, by sharing instead data packages that allows other users to reproduce the
-LCA database (provided they have the source database registered locally).
+`unfold` allows to share databases without exposing the data source, 
+sharing instead data packages that allows other users to reproduce the
+databases (provided they also have access to the licensed data source).
 
 `unfold` is initially conceived to share LCA databases that have been heavily
 modified, such as those generated with the `premise` package [@Sacchi:2022], 
