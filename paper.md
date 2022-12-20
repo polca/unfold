@@ -54,9 +54,9 @@ by Mendoza et al. [@Mendoza:2018]
 
 ![Workflow for sharing databases using `unfold` data packages.\label{fig:workflow}](assets/flow_diagram.png)
 
-Scaling factors between the exchanges of the databases to replicate 
+Scaling factors between the exchanges of the databases to share 
 and the exchanges of the licensed database are calculated and stored in a data package, 
-along with any extra datasets, as well as a metadata file that describes 
+along with any extra datasets and a metadata file that describes 
 the databases and their content (see \autoref{fig:workflow}).
 
 `unfold` is based on the `brightway2` framework [@Mutel:2017], which means that 
