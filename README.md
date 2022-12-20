@@ -11,7 +11,7 @@ Publicly share LCA databases that are based on licensed data.
 
 ``unfold`` is a Python package that allows "folding" and "unfolding"
 LCA databases derived from a source database (e.g., ecoinvent) without
-explicitly referring to the data contained in the source database.
+exposing the data contained in the source database.
 
 ![flow diagram](assets/flow_diagram.png)
 
@@ -24,13 +24,12 @@ to reproduce the LCA database (provided they have the source database).
 It is based on the [brightway2](https://brightway.dev) framework.
 
 `unfold` is initially conceived to share `premise`-generated 
-databases, without sharing the underlying data which is under 
+databases ([link](https://github.com/polca/premise)), without sharing the underlying data which is under 
 restrictive licensing (i.e., ecoinvent).
 
 ## Limitations
 
 * only works with `brightway2` at the moment
-* folding a large number of databases (>3) can be slow
 
 
 ## How to
