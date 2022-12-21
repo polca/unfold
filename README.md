@@ -5,13 +5,14 @@
   <a href="https://github.com/romainsacchi/unfold" target="_blank"><img src="https://github.com/romainsacchi/unfold/actions/workflows/main.yml/badge.svg?branch=main"></a>
 </p>
 
-Publicly share LCA databases that are based on licensed data.
+Publicly share data packages that allow reproducing LCA databases
+based on licensed data.
 
 ## What does `unfold` do?
 
 ``unfold`` is a Python package that allows "folding" and "unfolding"
 LCA databases derived from a source database (e.g., ecoinvent) without
-exposing the data contained in the source database.
+exposing the licensed data it builds form.
 
 ![flow diagram](assets/flow_diagram.png)
 
