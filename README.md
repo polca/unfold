@@ -76,7 +76,7 @@ and their content.
 ```
 
 The resulting data package is saved in the current directory
-and cna be shared with other users.
+and can be shared with other users.
 
 #### unfold
 
