@@ -12,7 +12,7 @@ based on licensed data.
 
 ``unfold`` is a Python package that allows "folding" and "unfolding"
 LCA databases derived from a source database (e.g., ecoinvent) without
-exposing the licensed data it builds form.
+exposing the licensed data it builds from.
 
 ![flow diagram](assets/flow_diagram.png)
 
@@ -76,7 +76,7 @@ and their content.
 ```
 
 The resulting data package is saved in the current directory
-and cna be shared with other users.
+and can be shared with other users.
 
 #### unfold
 
