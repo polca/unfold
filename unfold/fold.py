@@ -19,7 +19,12 @@ from prettytable import PrettyTable
 from scipy import sparse as nsp
 
 from . import __version__
-from .data_cleaning import DATA_DIR, get_biosphere_code, get_outdated_flows, check_mandatory_fields
+from .data_cleaning import (
+    DATA_DIR,
+    check_mandatory_fields,
+    get_biosphere_code,
+    get_outdated_flows,
+)
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
 
