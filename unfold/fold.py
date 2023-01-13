@@ -19,7 +19,7 @@ from prettytable import PrettyTable
 from scipy import sparse as nsp
 
 from . import __version__
-from .data_cleaning import DATA_DIR, get_biosphere_code, get_outdated_flows
+from .data_cleaning import DATA_DIR, get_biosphere_code, get_outdated_flows, check_mandatory_fields
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
 
@@ -554,6 +554,11 @@ class Fold:
         :param origin_db: the original database
         :param scenarios: list of databases
         """
+
+        # check mandatory fields are present
+        origin_db["database"] = check_mandatory_fields(origin_db["database"])
+        for s in scenarios:
+            s["database"] = check_mandatory_fields(s["database"])
 
         self.exc_codes.update(
             {
