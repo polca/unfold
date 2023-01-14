@@ -384,10 +384,11 @@ def check_mandatory_fields(data: list) -> list:
                     for exc in dataset["exchanges"]:
                         if exc["type"] == "production":
                             if field == "reference product":
-                                dataset[field] = exc["product"]
+                                dataset[field] = exc.get("product")
                             else:
-                                dataset[field] = exc[field]
-                else:
+                                dataset[field] = exc.get(field)
+
+                if dataset[field] is None:
                     missing_fields.append(
                         [
                             dataset.get("name", "unknown"),

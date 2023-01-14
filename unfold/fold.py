@@ -751,6 +751,8 @@ class Fold:
         df.loc[df["flow type"] == "biosphere", "from location"] = None
         df.loc[df["flow type"] == "technosphere", "from categories"] = None
         df.loc[df["flow type"] == "production", "from categories"] = None
+        # remove production exchanges
+        df = df[df["flow type"] != "production"]
 
         # return the dataframe and the new db
         return df, new_db, list_acts
