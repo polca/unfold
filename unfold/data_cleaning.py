@@ -324,7 +324,6 @@ def correct_fields_format(data: list, name: str) -> list:
 
     for dataset in data:
         if "parameters" in dataset:
-
             if not isinstance(dataset.get("parameters", []), list):
                 dataset["parameters"] = [dataset["parameters"]]
 

@@ -108,7 +108,6 @@ class Fold:
     """
 
     def __init__(self):
-
         self.bio_dict = get_biosphere_code()
         self.outdated_flows = get_outdated_flows()
         self.exc_codes = {}
@@ -133,7 +132,6 @@ class Fold:
         databases_to_fold: List[str] = None,
         descriptions: List[str] = None,
     ):
-
         """
         Identify the source database
         :return: name of the source database
@@ -618,7 +616,6 @@ class Fold:
 
         for _db_index, database in enumerate(list_of_databases):
             for dataset in database:
-
                 dataset_id = (
                     dataset["name"],
                     dataset.get("reference product"),
@@ -681,7 +678,6 @@ class Fold:
         )
 
         for _db_index in inds_std:
-
             c_name, c_ref, c_cat, c_loc, c_unit, c_type = acts_ind[_db_index[0]]
             s_name, s_ref, s_cat, s_loc, s_unit, s_type = acts_ind[_db_index[1]]
 
@@ -693,7 +689,6 @@ class Fold:
                 ]
 
             else:
-
                 database_name = self.datapackage_name
                 exc_key_supplier = (
                     database_name,

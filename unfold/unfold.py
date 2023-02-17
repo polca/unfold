@@ -190,7 +190,6 @@ class Unfold:
         )
 
     def get_list_unique_exchanges(self, databases):
-
         # get all unique exchanges
         # for each dataset in database
         # for each database in databases
@@ -214,7 +213,6 @@ class Unfold:
         )
 
     def store_datasets_metadata(self):
-
         # store the metadata in a dictionary
         self.dict_meta = {
             (
@@ -258,7 +256,6 @@ class Unfold:
         self.reversed_acts_indices = {act: i for i, act in enumerate(list_unique_acts)}
 
     def fetch_exchange_code(self, name, ref, loc):
-
         if (name, ref, loc, None) in self.dependency_mapping:
             return self.dependency_mapping[(name, ref, loc, None)][1]
         else:
@@ -300,7 +297,6 @@ class Unfold:
         }
 
     def populate_sparse_matrix(self):
-
         self.generate_activities_indices()
 
         m = nsp.lil_matrix((len(self.acts_indices), len(self.acts_indices)))
@@ -332,7 +328,6 @@ class Unfold:
         return m
 
     def write_scaling_factors_in_matrix(self, matrix, scenario_name):
-
         _ = lambda x: x if x != 0 else 1.0
 
         for flow_id, factor in self.factors.items():
@@ -389,7 +384,6 @@ class Unfold:
         }
 
     def build_superstructure_database(self, matrix):
-
         print(f"Generating superstructure database...")
 
         # fetch non-zero indices of matrix 0
@@ -432,11 +426,9 @@ class Unfold:
     def build_single_databases(
         self, matrix, databases_to_build: List[dict]
     ) -> list[list[dict]]:
-
         databases_to_return = []
 
         for ix, i in enumerate(databases_to_build):
-
             print(f"Generating database for scenario {i['name']}...")
 
             non_zero_indices = sparse.argwhere(matrix[..., ix].T != 0)
@@ -487,7 +479,6 @@ class Unfold:
         return self.build_superstructure_database(matrix=matrix)
 
     def generate_single_databases(self) -> List[List[dict]]:
-
         m = self.populate_sparse_matrix()
 
         matrix = sparse.stack(
