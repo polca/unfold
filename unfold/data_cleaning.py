@@ -200,7 +200,7 @@ def check_for_duplicates(db: List[dict], data: List[dict]) -> List[dict]:
         (x["name"].lower(), x["reference product"].lower(), x["location"])
         for x in data
         if (x["name"].lower(), x["reference product"].lower(), x["location"])
-        in db_names
+           in db_names
     ]
 
     if len(already_exist) > 0:
@@ -328,9 +328,9 @@ def correct_fields_format(data: list, name: str) -> list:
                 dataset["parameters"] = [dataset["parameters"]]
 
             if (
-                dataset["parameters"] is None
-                or dataset["parameters"] == {}
-                or dataset["parameters"] == []
+                    dataset["parameters"] is None
+                    or dataset["parameters"] == {}
+                    or dataset["parameters"] == []
             ):
                 del dataset["parameters"]
 
@@ -377,8 +377,8 @@ def check_mandatory_fields(data: list) -> list:
         for field in dataset_fields:
             if field not in dataset:
                 if (
-                    field in ["reference product", "location", "unit", "name"]
-                    and "exchanges" in dataset
+                        field in ["reference product", "location", "unit", "name"]
+                        and "exchanges" in dataset
                 ):
                     for exc in dataset["exchanges"]:
                         if exc["type"] == "production":
@@ -387,9 +387,10 @@ def check_mandatory_fields(data: list) -> list:
                             else:
                                 dataset[field] = exc.get(field)
 
-                if dataset[field] is None:
+                if dataset.get(field) is None:
                     missing_fields.append(
                         [
+                            dataset.get("database", "unknown"),
                             dataset.get("name", "unknown"),
                             dataset.get("reference product", "unknown"),
                             dataset.get("location", "unknown"),
@@ -401,6 +402,7 @@ def check_mandatory_fields(data: list) -> list:
         # print in prettytable the list of missing fields
         table = PrettyTable()
         table.field_names = [
+            "Database",
             "Dataset",
             "Reference product",
             "Location",
@@ -410,8 +412,48 @@ def check_mandatory_fields(data: list) -> list:
             table.add_row(row)
         print(table)
         raise ValueError(
-            "Some mandatory fields are missing in the database."
+            "Some mandatory fields are missing in the database. "
             "Ten first missing fields are displayed above."
         )
 
     return data
+
+
+def get_list_of_unique_datasets(data: list) -> list:
+    """
+    Return a list of unique datasets from a list of datasets.
+    :param data: list of dictionaries representing the inventories to be imported
+    :return: list of dictionaries representing the inventories to be imported
+    """
+    unique_datasets = []
+    for dataset in data:
+        if dataset not in unique_datasets:
+            unique_datasets.append(
+                (
+                    dataset["name"],
+                    dataset["reference product"],
+                    dataset["location"],
+                    dataset["unit"],
+                )
+            )
+    return unique_datasets
+
+
+def check_commonality_between_databases(original_db, scenario_db, db_name):
+    """
+    Check that scenario databases have at least one dataset in common
+    with the original database.
+    :param original_db: original
+    :param scenario_db: list of scenario databases
+    :param db_name: name of the scenario database
+    :raises ValueError: if no dataset is in common
+    """
+
+    original_db_unique_datasets = get_list_of_unique_datasets(original_db)
+
+    scenario_db_unique_datasets = get_list_of_unique_datasets(scenario_db)
+    if not set(original_db_unique_datasets).intersection(scenario_db_unique_datasets):
+        raise ValueError(
+            "Could not find datasets in common between the reference database "
+            f"and {db_name}."
+        )

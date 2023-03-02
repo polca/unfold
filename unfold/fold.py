@@ -24,6 +24,7 @@ from .data_cleaning import (
     check_mandatory_fields,
     get_biosphere_code,
     get_outdated_flows,
+    check_commonality_between_databases
 )
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
@@ -211,12 +212,21 @@ class Fold:
             "system model": source_database_system_model,
             "version": source_database_version,
         }
+
+        source_database_extracted = check_mandatory_fields(source_database_extracted)
+
         self.build_mapping_for_dependencies(source_database_extracted)
         print("Done!")
 
         print("Extracting databases to fold...")
         for database in databases_to_fold:
             extracted_database = self.extract_database(database)
+            extracted_database = check_mandatory_fields(extracted_database)
+            check_commonality_between_databases(
+                source_database_extracted, extracted_database, database
+            )
+
+
             self.databases_to_fold.append(
                 {
                     "name": database,
@@ -558,11 +568,6 @@ class Fold:
         :param scenarios: list of databases
         """
 
-        # check mandatory fields are present
-        origin_db["database"] = check_mandatory_fields(origin_db["database"])
-        for s in scenarios:
-            s["database"] = check_mandatory_fields(s["database"])
-
         self.exc_codes.update(
             {
                 (
@@ -575,9 +580,11 @@ class Fold:
             }
         )
 
+        # fetch a list of unique datasets
         list_acts = self.get_list_unique_acts(
-            [origin_db["database"]] + [s["database"] for s in scenarios]
+            [origin_db["database"]] + [a["database"] for a in scenarios]
         )
+
         acts_ind = dict(enumerate(list_acts))
         acts_ind_rev = {value: key for key, value in acts_ind.items()}
         list_scenarios = ["original"] + [s["name"] for s in scenarios]
