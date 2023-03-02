@@ -44,6 +44,12 @@ restrictive licensing (i.e., ecoinvent).
 
     pip install unfold
 
+Alternatively, you can clone the repository and install the library from the source code:
+
+    git clone https://github.com/polca/unfold.git
+    cd unfold
+    pip install -e .
+
 It can also be installed from ``conda``:
 
     conda install -c romainsacchi unfold
@@ -122,10 +128,31 @@ This outputs a superstructure database in your brightway2 project,
 as well as a scenario difference file (Excel) in the current working
 directory.
 
+## Contributing
+
+Unfold is an open-source project, and contributions are welcome.
+To contribute to the project, please create a pull request on the project's 
+GitHub page. Before submitting a pull request, please make sure that 
+your changes are properly documented and that all tests pass.
+
+## Issues
+
+If you encounter any problems, please open an issue on the project's
+GitHub page. Please include a minimal working example that reproduces
+the problem. If you are reporting a bug, please include the version
+of the package you are using.
+
+## Support
+
+If you need help using Unfold, please contact the author (see below).
+
+
 ## Author
 
 [Romain Sacchi](mailto:romain.sacchi@psi.ch), PSI
 
 ## License
 
-See [License](https://github.com/romainsacchi/stunt/blob/main/LICENSE).
+Unfold is released under the MIT License.
+See the [License](https://github.com/polca/unfold/blob/main/LICENSE) file for more information.
+

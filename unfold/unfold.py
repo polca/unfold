@@ -112,7 +112,9 @@ class Unfold:
         dependencies = dependencies or {}
 
         # Check if all dependencies are available in the project
-        if dependencies and all(dependency in available_databases for dependency in dependencies.values()):
+        if dependencies and all(
+            dependency in available_databases for dependency in dependencies.values()
+        ):
             # If all dependencies are available, update the "source" attribute for each dependency
             for database in self.dependencies:
                 database["source"] = dependencies[database["name"]]
@@ -349,15 +351,15 @@ class Unfold:
                 key: values
                 for key, values in dataset.items()
                 if key
-                   not in [
-                       "exchanges",
-                       "code",
-                       "name",
-                       "reference product",
-                       "location",
-                       "unit",
-                       "database",
-                   ]
+                not in [
+                    "exchanges",
+                    "code",
+                    "name",
+                    "reference product",
+                    "location",
+                    "unit",
+                    "database",
+                ]
             }
             for dataset in self.database
         }
@@ -431,23 +433,23 @@ class Unfold:
 
     def populate_sparse_matrix(self) -> nsp.lil_matrix:
         """
-            Generate a sparse matrix representation of the product system modeled by this object.
+        Generate a sparse matrix representation of the product system modeled by this object.
 
-            The matrix is generated based on the data in the `database` attribute, which is assumed to be
-            a list of dictionaries, where each dictionary represents a dataset in the product system.
-            Each dataset has a list of exchanges, where each exchange is a dictionary with information
-            about the input or output of a process.
+        The matrix is generated based on the data in the `database` attribute, which is assumed to be
+        a list of dictionaries, where each dictionary represents a dataset in the product system.
+        Each dataset has a list of exchanges, where each exchange is a dictionary with information
+        about the input or output of a process.
 
-            The matrix is generated as a `lil_matrix` object from the `scipy.sparse` module. The rows and
-            columns of the matrix represent unique activities in the product system, which are determined
-            by the unique combinations of the following exchange attributes: name, product, categories,
-            location, unit, and type.
+        The matrix is generated as a `lil_matrix` object from the `scipy.sparse` module. The rows and
+        columns of the matrix represent unique activities in the product system, which are determined
+        by the unique combinations of the following exchange attributes: name, product, categories,
+        location, unit, and type.
 
-            The matrix is populated by looping over each exchange in each dataset, and adding the amount
-            of the exchange to the corresponding row and column in the matrix.
+        The matrix is populated by looping over each exchange in each dataset, and adding the amount
+        of the exchange to the corresponding row and column in the matrix.
 
-            :return: A `lil_matrix` object representing the product system modeled by this object.
-            """
+        :return: A `lil_matrix` object representing the product system modeled by this object.
+        """
 
         # Generate the indices for the activities
         self.generate_activities_indices()
@@ -477,11 +479,15 @@ class Unfold:
                     "production",
                 )
                 # Add the exchange amount to the corresponding cell in the matrix
-                m[self.reversed_acts_indices[s], self.reversed_acts_indices[c]] += exc["amount"]
+                m[self.reversed_acts_indices[s], self.reversed_acts_indices[c]] += exc[
+                    "amount"
+                ]
 
         return m
 
-    def write_scaling_factors_in_matrix(self, matrix: np.ndarray, scenario_name: str) -> np.ndarray:
+    def write_scaling_factors_in_matrix(
+        self, matrix: np.ndarray, scenario_name: str
+    ) -> np.ndarray:
         """
         Multiplies the elements of the given matrix with scaling factors for a given scenario.
 
@@ -868,17 +874,17 @@ class Unfold:
 
         # Rename columns and add new columns for database information and metadata
         self.scenario_df.columns = [
-                                       "to activity name",
-                                       "to reference product",
-                                       "to location",
-                                       "to unit",
-                                       "from activity name",
-                                       "from reference product",
-                                       "from location",
-                                       "from categories",
-                                       "from unit",
-                                       "flow type",
-                                   ] + [s["name"] for s in self.scenarios]
+            "to activity name",
+            "to reference product",
+            "to location",
+            "to unit",
+            "from activity name",
+            "from reference product",
+            "from location",
+            "from categories",
+            "from unit",
+            "flow type",
+        ] + [s["name"] for s in self.scenarios]
 
         self.scenario_df["to database"] = self.package.descriptor["name"]
         self.scenario_df["to categories"] = None

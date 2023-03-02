@@ -24,7 +24,7 @@ from .data_cleaning import (
     check_mandatory_fields,
     get_biosphere_code,
     get_outdated_flows,
-    check_commonality_between_databases
+    check_commonality_between_databases,
 )
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
@@ -134,8 +134,29 @@ class Fold:
         descriptions: List[str] = None,
     ):
         """
-        Identify the source database
-        :return: name of the source database
+        The identify_databases_to_fold function identifies the source database and the databases to be folded into the source database and extracts them.
+
+        :param source_database: Name of the source database to be used. If not specified, the user is prompted to choose from the available databases.
+        :param source_database_system_model: System model of the source database to be used. If not specified, the user is prompted to input.
+        :param source_database_version: Version of the source database to be used. If not specified, the user is prompted to input.
+        :param databases_to_fold: List of databases to be folded into the source database. If not specified, the user is prompted to input.
+        :param descriptions: Short descriptions of each database to be folded. If not specified, the user is prompted to input.
+        :return: The source dictionary containing information about the source database, such as its name, database, system model, and version.
+        :return: The databases_to_fold list containing dictionaries of information about each database to be folded, including its name, database, and description.
+
+        Functionality:
+
+        Checks whether the user has already specified a datapackage name and description. If not, prompts the user to input these details.
+        Lists the available databases and prompts the user to input the number of the reference database if the source_database input is not specified.
+        Identifies the dependencies of the source and folded databases.
+        Prompts the user to input the system model and version of the source database if not specified.
+        Prompts the user to input the list of databases to be folded and their descriptions if not specified.
+        Extracts the source database and ensures that mandatory fields are included.
+        Builds the mapping of dependencies for the source database.
+        Extracts each database to be folded, ensures that mandatory fields are included, and builds the mapping of dependencies.
+        Identifies whether any dependencies are external and, if so, extracts them.
+        Returns a set of the dependencies excluding the source and databases to be folded.
+
         """
 
         if not self.datapackage_name:
@@ -226,7 +247,6 @@ class Fold:
                 source_database_extracted, extracted_database, database
             )
 
-
             self.databases_to_fold.append(
                 {
                     "name": database,
@@ -290,9 +310,16 @@ class Fold:
 
     def get_list_unique_acts(self, scenarios: List[List[dict]]) -> list:
         """
-        Get a list of unique activities from a list of databases
-        :param scenarios: list of databases
-        :return: list of unique activities
+        Returns a list of unique activities from a list of databases, where each database is represented by a list of
+        datasets containing their respective exchanges.
+
+        :param scenarios: A list of databases, where each database is a list of datasets, with each dataset containing the
+                          exchanges.
+        :type scenarios: list
+
+        :return: A list of tuples representing the unique activities in the provided databases, where each tuple contains
+                 the activity name, reference product, location, categories, unit and type.
+        :rtype: list
         """
 
         list_unique_acts = []
@@ -343,6 +370,25 @@ class Fold:
         databases_to_fold: List[str] = None,
         descriptions: List[str] = None,
     ):
+        """
+        Folds one or more databases into a new package.
+
+        :param package_name: Name for the new datapackage.
+        :type package_name: str, optional
+        :param package_description: Short description for the new datapackage.
+        :type package_description: str, optional
+        :param source: Name of the source database.
+        :type source: str, optional
+        :param system_model: System model of the source database.
+        :type system_model: str, optional
+        :param version: Version of the source database.
+        :type version: float or str, optional
+        :param databases_to_fold: List of names of the databases to fold.
+        :type databases_to_fold: List[str], optional
+        :param descriptions: Short description for each database to fold.
+        :type descriptions: List[str], optional
+        :raises AssertionError: When one or more databases to fold are not found.
+        """
         self.datapackage_name = package_name
         self.datapackage_description = package_description
 
@@ -563,9 +609,33 @@ class Fold:
         self, origin_db: dict, scenarios: List[dict]
     ) -> tuple[pd.DataFrame, list[dict], list[tuple]]:
         """
-        Generate a scenario difference file for a given list of databases
+        Generate a scenario difference file for a given list of databases.
+        The function generate_scenario_difference_file calculates the scenario difference file for a given list of databases.
+        This function takes in two parameters, origin_db, and scenarios. origin_db is a dictionary representing the
+        original database, and scenarios is a list of databases.
+
+        The function first creates a dictionary self.exc_codes to store the codes of exchanges using their attributes
+        like name, reference product, location, and unit. It then fetches the unique activities by calling
+        the get_list_unique_acts function using the list of the original database and scenarios as the argument.
+
+        It then creates a dictionary acts_ind to map indices to each activity, and another dictionary acts_ind_rev
+        that maps activities to their corresponding indices. It also creates a list of scenarios and a list of databases.
+
+        The function then initializes matrices using the lil_matrix function from the scipy.sparse module to store
+        the matrices for each scenario. It then extracts metadata from the databases, and stores them in a dictionary dict_meta.
+
+        Next, for each dataset in each database, the function retrieves the dataset_id and exc_id by using their
+        attributes like name, reference product, location, unit, and type. It then updates the corresponding matrix entry with the exchange amount for the current dataset and exchange.
+
+        The function then stacks the matrices into a sparse matrix and retrieves the indices of nonzero elements.
+        It then creates a new database by combining the metadata with exchanges corresponding to the indices retrieved.
+
+        Finally, the function creates a dataframe containing the differences between scenarios and returns it along
+        with the new database and a list of activities.
+
         :param origin_db: the original database
         :param scenarios: list of databases
+        :return: a tuple containing a dataframe, a list of dictionaries, and a list of tuples
         """
 
         self.exc_codes.update(
