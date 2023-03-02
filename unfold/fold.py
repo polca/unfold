@@ -21,10 +21,10 @@ from scipy import sparse as nsp
 from . import __version__
 from .data_cleaning import (
     DATA_DIR,
+    check_commonality_between_databases,
     check_mandatory_fields,
     get_biosphere_code,
     get_outdated_flows,
-    check_commonality_between_databases,
 )
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
