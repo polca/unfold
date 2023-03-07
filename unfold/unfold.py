@@ -33,6 +33,7 @@ from .data_cleaning import (
     correct_fields_format,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
+    get_list_of_unique_datasets,
 )
 from .export import UnfoldExporter
 from .utils import HiddenPrints
@@ -281,11 +282,6 @@ class Unfold:
         which is a dictionary that maps flow ids to their corresponding
         factors.
 
-        Args:
-            None
-
-        Returns:
-            None
         """
         self.factors = (
             self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
@@ -295,11 +291,8 @@ class Unfold:
         """
         Gets a list of all unique exchanges found in a list of databases.
 
-        Args:
-            databases (list): A list of Brightway2-style databases to extract unique exchanges from.
-
-        Returns:
-            A list of tuples representing unique exchanges, where each tuple contains the following information:
+        :param databases: A list of Brightway2-style databases to extract unique exchanges from.
+        :return: A list of tuples representing unique exchanges, where each tuple contains the following information:
             - name: The name of the exchange.
             - product: The reference product of the exchange.
             - categories: The categories of the exchange.
@@ -307,6 +300,7 @@ class Unfold:
             - unit: The unit of the exchange.
             - type: The type of the exchange (either "technosphere" or "biosphere").
         """
+
         return list(
             set(
                 [
@@ -332,11 +326,6 @@ class Unfold:
         The resulting metadata is stored in the dict_meta attribute, which is a dictionary that maps dataset identifiers to their
         metadata.
 
-        Args:
-            None
-
-        Returns:
-            None
         """
         # store the metadata in a dictionary
         self.dict_meta = {
@@ -408,9 +397,8 @@ class Unfold:
         If not, it is either a technosphere or production flow.
 
         :param ind: index of the exchange
-        :param acts_ind: dictionary of activities
         :param amount: amount of the exchange
-        :param production: boolean indicating if it is a production flow
+        :param scenario_name: name of the scenario
         :return: dictionary of the exchange
         """
         name, ref, cat, loc, unit, flow_type = self.acts_indices[ind]
@@ -661,14 +649,17 @@ class Unfold:
             non_zero_indices = sparse.argwhere(matrix[..., ix].T != 0)
             non_zero_indices = list(map(tuple, non_zero_indices))
 
-            # Create a dictionary that maps producer indices to lists of consumer indices for the non-zero elements in the matrix.
+            # Create a dictionary that maps producer indices
+            # to lists of consumer indices for the non-zero elements
+            # in the matrix.
             inds_d = defaultdict(list)
             for ind in non_zero_indices:
                 inds_d[ind[0]].append(ind[1])
 
             new_db = []
 
-            # For each producer index, create an activity dictionary and add it to the current scenario's database.
+            # For each producer index, create an activity dictionary
+            # and add it to the current scenario's database.
             for k, v in inds_d.items():
                 act = self.get_act_dict_structure(
                     ind=k,
@@ -676,19 +667,40 @@ class Unfold:
                 )
                 act.update(self.dict_meta[self.acts_indices[k]])
 
-                # For each consumer index associated with the current producer index, create an exchange dictionary and add it to the activity's exchanges list.
+                # For each consumer index associated with the current producer index, create an exchange dictionary
+                # and add it to the activity's exchanges list.
                 act["exchanges"].extend(
                     self.get_exchange(
                         ind=j, amount=matrix[j, k, ix], scenario_name=i["name"]
                     )
                     for j in v
                 )
+
                 new_db.append(act)
+
+            # remove datasets that are not in the current scenario
+            new_db = self.filter_out_datasets(new_db, i["name"])
 
             # Add the current scenario's database to the list of databases to return.
             databases_to_return.append(new_db)
 
         return databases_to_return
+
+    def filter_out_datasets(
+        self, database: List[dict], scenario_name: str
+    ) -> List[dict]:
+        """
+        Remove datasets that are not in the current scenario.
+        """
+
+        # Get the list of datasets not used in the current scenario.
+        df_gr = self.scenario_df.groupby("to activity name").sum(numeric_only=True).loc[:, [scenario_name]]
+        datasets_not_in_scenario = df_gr.loc[df_gr[scenario_name] == 0, :].index.tolist()
+
+        # Remove datasets that are not in the current scenario.
+        database = [act for act in database if act["name"] not in datasets_not_in_scenario]
+
+        return database
 
     def generate_superstructure_database(self) -> List[dict]:
         """
@@ -752,13 +764,15 @@ class Unfold:
         """
         Formats the scenario dataframe.
 
-        Parameters:
-        - `scenarios`: A list of scenario indices to keep in the dataframe. If `None`, keeps all scenarios.
-        - `superstructure`: If `True`, adds columns to the dataframe for the superstructure.
+        :param scenarios: A list of scenario indices to keep in the dataframe. If `None`, keeps all scenarios.
+        :type scenarios: list[int]
+        :param superstructure: If `True`, adds columns to the dataframe for the superstructure.
+        :type superstructure: bool
 
-        Notes:
+        .. note::
         - This function removes unused scenarios from `self.scenarios`, drops columns from the scenario dataframe that correspond to scenarios that were removed, and converts `None` and `np.nan` values to `None`.
         - If `superstructure` is `True`, this function adds columns to the scenario dataframe for the superstructure by calling the `get_suppliers()` and `get_consumers()` functions.
+
         """
 
         scenarios = scenarios or list(range(len(self.scenarios)))
