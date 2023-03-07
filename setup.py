@@ -32,7 +32,7 @@ def package_files(directory):
 
 setup(
     name="unfold",
-    version="1.0.3",
+    version="1.0.4",
     python_requires=">=3.9",
     packages=packages,
     author="Romain Sacchi <romain.sacchi@psi.ch>",
