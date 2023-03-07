@@ -615,7 +615,6 @@ class Unfold:
     def build_single_databases(
         self, matrix, databases_to_build: List[dict]
     ) -> list[list[dict]]:
-
         """
         Generate a list of single databases for each scenario specified in `databases_to_build`.
 
