@@ -1,14 +1,15 @@
-import pytest
-from unfold import Fold, Unfold
-import yaml
 import brightway2 as bw
 import numpy as np
+import pytest
+import yaml
+
+from unfold import Fold, Unfold
 
 bw.projects.set_current("test")
 bw.bw2setup()
 
-def test_db_reproduction():
 
+def test_db_reproduction():
     fp = "./tests/fixture/reference_database.yaml"
     with open(fp, "r") as stream:
         db = yaml.load(stream, Loader=yaml.FullLoader)
@@ -44,14 +45,10 @@ def test_db_reproduction():
         system_model="cutoff",
         version="2.0",
         databases_to_fold=["db A", "db B"],
-        descriptions=["this is db A", "this is db B"]
+        descriptions=["this is db A", "this is db B"],
     )
 
-    Unfold("test.zip").unfold(
-        dependencies={
-            "reference_database": "reference_database"
-        }
-    )
+    Unfold("test.zip").unfold(dependencies={"reference_database": "reference_database"})
 
     lca = bw.LCA({bw.get_activity(("db A", "activity A")): 1})
     lca.lci()
@@ -62,4 +59,3 @@ def test_db_reproduction():
     lca.lci()
     new_supply_B = lca.supply_array
     assert np.allclose(original_supply_B, new_supply_B) == True
-
