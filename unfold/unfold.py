@@ -970,7 +970,7 @@ class Unfold:
         superstructure: bool = False,
     ):
         """
-        unfold() is a method of the Unfol class, which extracts specific scenarios from the input LCA database and writes them as new databases.
+        unfold() is a method of the Unfold class, which extracts specific scenarios from the input LCA database and writes them as new databases.
 
         :param scenarios: A list of integers indicating the indices of the scenarios to extract. If None, all scenarios are extracted. Default is None.
         :param dependencies: A dictionary containing additional inventory databases that may be needed for extraction. Default is None.

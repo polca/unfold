@@ -1,0 +1,119 @@
+!!python/tuple [db A, activity A]:
+  name: activity A
+  reference product: A
+  location: GLO
+  type: process
+  unit: kg
+  database: db A
+  code: A
+  exchanges:
+    - amount: 1
+      input: !!python/tuple [ db A, activity A ]
+      type: production
+      name: A
+      unit: kg
+      database: db A
+      code: A
+      location: GLO
+    - amount: 0.7
+      input: !!python/tuple [db A, activity B]
+      type: technosphere
+      name: B
+      unit: kg
+      database: db A
+      code: B
+      location: GLO
+    - amount: 1.5
+      input: !!python/tuple [db A, activity C ]
+      type: technosphere
+      name: C
+      unit: kg
+      database: db A
+      code: C
+      location: GLO
+    - amount: 2.1
+      input: !!python/tuple [ db A, activity B ]
+      type: technosphere
+      name: C
+      unit: kg
+      database: db A
+      code: C
+      location: GLO
+
+!!python/tuple [db A, activity B]:
+  name: activity B
+  reference product: B
+  location: GLO
+  type: process
+  unit: kg
+  database: db A
+  code: B
+  exchanges:
+    - amount: 1
+      input: !!python/tuple [ db A, activity B ]
+      type: production
+      name: B
+      unit: kg
+      database: db A
+      code: B
+      location: GLO
+    - amount: 1.2
+      input: !!python/tuple [db A, activity C]
+      type: technosphere
+      name: C
+      unit: kg
+      database: db A
+      code: C
+      location: GLO
+    - amount: 0.5
+      input: !!python/tuple [db A, activity C]
+      type: technosphere
+      name: D
+      unit: kg
+      database: db A
+      code: D
+      location: GLO
+
+!!python/tuple [db A, activity C]:
+  name: activity C
+  reference product: C
+  location: GLO
+  type: process
+  unit: kg
+  database: db A
+  code: C
+  exchanges:
+    - amount: 1
+      input: !!python/tuple [ db A, activity C ]
+      type: production
+      name: C
+      unit: kg
+      database: db A
+      code: C
+      location: GLO
+    - amount: 0.4
+      input: !!python/tuple [db A, activity B]
+      type: technosphere
+      name: D
+      unit: kg
+      database: db A
+      code: D
+      location: GLO
+
+!!python/tuple [db A, activity D]:
+  name: activity D
+  reference product: D
+  location: GLO
+  type: process
+  unit: kg
+  database: db A
+  code: D
+  exchanges:
+  - amount: 1
+    input: !!python/tuple [ db A, activity D ]
+    type: production
+    name: D
+    unit: kg
+    database: db A
+    code: D
+    location: GLO
