@@ -1,12 +1,12 @@
-import brightway2 as bw
+import bw2data, bw2calc, bw2io
 import numpy as np
 import pytest
 import yaml
 
 from unfold import Fold, Unfold
 
-bw.projects.set_current("test")
-bw.bw2setup()
+bw2data.projects.set_current("test")
+bw2io.bw2setup()
 
 
 def test_db_reproduction():
@@ -24,15 +24,15 @@ def test_db_reproduction():
     with open(fp, "r") as stream:
         db_b = yaml.load(stream, Loader=yaml.FullLoader)
 
-    bw.Database("reference_database").write(db)
-    bw.Database("db A").write(db_a)
-    bw.Database("db B").write(db_b)
+    bw2data.Database("reference_database").write(db)
+    bw2data.Database("db A").write(db_a)
+    bw2data.Database("db B").write(db_b)
 
-    lca = bw.LCA({bw.get_activity(("db A", "activity A")): 1})
+    lca = bw2calc.LCA({bw2data.get_activity(("db A", "activity A")): 1})
     lca.lci()
     original_supply_A = lca.supply_array
 
-    lca = bw.LCA({bw.get_activity(("db B", "activity A")): 1})
+    lca = bw2calc.LCA({bw2data.get_activity(("db B", "activity A")): 1})
     lca.lci()
     original_supply_B = lca.supply_array
 
@@ -50,12 +50,12 @@ def test_db_reproduction():
 
     Unfold("test.zip").unfold(dependencies={"reference_database": "reference_database"})
 
-    lca = bw.LCA({bw.get_activity(("db A", "activity A")): 1})
+    lca = bw2calc.LCA({bw2data.get_activity(("db A", "activity A")): 1})
     lca.lci()
     new_supply_A = lca.supply_array
     assert np.allclose(original_supply_A, new_supply_A) == True
 
-    lca = bw.LCA({bw.get_activity(("db B", "activity A")): 1})
+    lca = bw2calc.LCA({bw2data.get_activity(("db B", "activity A")): 1})
     lca.lci()
     new_supply_B = lca.supply_array
     assert np.allclose(original_supply_B, new_supply_B) == True
