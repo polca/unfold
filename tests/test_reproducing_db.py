@@ -1,4 +1,6 @@
-import bw2data, bw2calc, bw2io
+import bw2calc
+import bw2data
+import bw2io
 import numpy as np
 import pytest
 import yaml
