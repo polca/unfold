@@ -8,7 +8,7 @@
 Publicly share data packages that allow reproducing LCA databases
 based on licensed data.
 
-If you use this software, please cite our article as follows:
+If you use this software, please cite the following article:
 
 Sacchi, R., (2023). unfold: removing the barriers to sharing and reproducing prospective life-cycle assessment databases. 
 Journal of Open Source Software, 8(83), 5198, https://doi.org/10.21105/joss.05198
