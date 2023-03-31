@@ -8,7 +8,6 @@ import yaml
 from prettytable import PrettyTable
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
-FILEPATH_BIOSPHERE_FLOWS = DATA_DIR / "flows_biosphere_38.csv"
 OUTDATED_FLOWS = DATA_DIR / "outdated_flows.yaml"
 
 
@@ -21,30 +20,6 @@ def get_outdated_flows() -> dict:
         flows = yaml.safe_load(stream)
 
     return flows
-
-
-def get_biosphere_code() -> dict:
-    """
-    Retrieve a dictionary with biosphere flow names and uuid codes.
-    :returns: dictionary with biosphere flow names as keys and uuid codes as values
-
-    """
-
-    if not FILEPATH_BIOSPHERE_FLOWS.is_file():
-        raise FileNotFoundError("The dictionary of biosphere flows could not be found.")
-
-    csv_dict = {}
-
-    with open(FILEPATH_BIOSPHERE_FLOWS, encoding="utf-8") as file:
-        input_dict = csv.reader(file, delimiter=";")
-        for row in input_dict:
-            csv_dict[(row[0], row[1], row[2], row[3])] = row[4]
-
-    return csv_dict
-
-
-biosphere_dict = get_biosphere_code()
-outdated_flows = get_outdated_flows()
 
 
 def remove_missing_fields(data: List[dict]) -> List[dict]:
@@ -104,7 +79,7 @@ def check_exchanges_input(database, input_mapping):
     return database
 
 
-def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[dict]:
+def add_biosphere_links(data: List[dict], mapping: dict, delete_missing: bool = False) -> List[dict]:
     """Add links for biosphere exchanges to :attr:`import_db`
     Modifies the :attr:`import_db` attribute in place.
     Also checks for outdated biosphere flows and replaces them with the
@@ -116,67 +91,19 @@ def add_biosphere_links(data: List[dict], delete_missing: bool = False) -> List[
     for x in data:
         for y in x["exchanges"]:
             if y["type"] == "biosphere":
-                if y["name"] in outdated_flows:
-                    y["name"] = outdated_flows[y["name"]]
-
-                if isinstance(y["categories"], str):
-                    y["categories"] = tuple(y["categories"].split("::"))
-                if len(y["categories"]) > 1:
-                    try:
-                        key = (
-                            y["name"],
-                            y["categories"][0],
-                            y["categories"][1],
-                            y["unit"],
-                        )
-                        if key in biosphere_dict:
-                            y["input"] = (
-                                "biosphere3",
-                                biosphere_dict[key],
-                            )
-                        else:
-                            if key[0] in outdated_flows:
-                                new_key = list(key)
-                                new_key[0] = outdated_flows[key[0]]
-                                y["input"] = (
-                                    "biosphere3",
-                                    biosphere_dict[tuple(new_key)],
-                                )
-                            else:
-                                if delete_missing:
-                                    y["flag_deletion"] = True
-                                else:
-                                    print(f"Could not find a biosphere flow for {key}")
-
-                    except KeyError:
-                        if delete_missing:
-                            y["flag_deletion"] = True
-                        else:
-                            raise
+                key = (
+                    y["name"],
+                    None,
+                    None,
+                    y["categories"],
+                )
+                if key in mapping:
+                    y["input"] = (
+                        "biosphere3",
+                        mapping[key],
+                    )
                 else:
-                    try:
-                        y["input"] = (
-                            "biosphere3",
-                            biosphere_dict[
-                                (
-                                    y["name"].strip(),
-                                    y["categories"][0].strip(),
-                                    "unspecified",
-                                    y["unit"].strip(),
-                                )
-                            ],
-                        )
-                    except KeyError:
-                        if delete_missing:
-                            print(
-                                f"The following biosphere exchange: "
-                                f"{y['name']}, {y['categories'][0]}, unspecified, {y['unit']} "
-                                f"in {x['name']}, {x['location']}"
-                                f" cannot be found and will be deleted."
-                            )
-                            y["flag_deletion"] = True
-                        else:
-                            raise
+                    print(f"Could not find a biosphere flow for {key}")
         x["exchanges"] = [ex for ex in x["exchanges"] if "flag_deletion" not in ex]
 
     return data
@@ -200,7 +127,7 @@ def check_for_duplicates(db: List[dict], data: List[dict]) -> List[dict]:
         (x["name"].lower(), x["reference product"].lower(), x["location"])
         for x in data
         if (x["name"].lower(), x["reference product"].lower(), x["location"])
-        in db_names
+           in db_names
     ]
 
     if len(already_exist) > 0:
@@ -328,9 +255,9 @@ def correct_fields_format(data: list, name: str) -> list:
                 dataset["parameters"] = [dataset["parameters"]]
 
             if (
-                dataset["parameters"] is None
-                or dataset["parameters"] == {}
-                or dataset["parameters"] == []
+                    dataset["parameters"] is None
+                    or dataset["parameters"] == {}
+                    or dataset["parameters"] == []
             ):
                 del dataset["parameters"]
 
@@ -377,8 +304,8 @@ def check_mandatory_fields(data: list) -> list:
         for field in dataset_fields:
             if field not in dataset:
                 if (
-                    field in ["reference product", "location", "unit", "name"]
-                    and "exchanges" in dataset
+                        field in ["reference product", "location", "unit", "name"]
+                        and "exchanges" in dataset
                 ):
                     for exc in dataset["exchanges"]:
                         if exc["type"] == "production":

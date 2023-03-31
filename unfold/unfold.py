@@ -34,6 +34,7 @@ from .data_cleaning import (
     get_list_of_unique_datasets,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
+    get_outdated_flows
 )
 from .export import UnfoldExporter
 from .utils import HiddenPrints
@@ -61,6 +62,7 @@ class Unfold:
         self.dict_meta = None
         self.acts_indices = None
         self.reversed_acts_indices = None
+        self.outdated_flows = get_outdated_flows()
         self.path = path
         self.package = Package(self.path)
         self.dependencies = self.package.descriptor["dependencies"]
@@ -251,9 +253,10 @@ class Unfold:
         The cleaned inventory is returned as a list of activity dictionaries.
 
         """
+
         print("Cleaning imported inventory...")
         data = remove_missing_fields(data)
-        add_biosphere_links(data)
+        add_biosphere_links(data, self.dependency_mapping)
         check_for_duplicates(self.database, data)
         add_product_field_to_exchanges(data, self.database)
         remove_categories_for_technosphere_flows(data)
@@ -403,6 +406,13 @@ class Unfold:
         """
         name, ref, cat, loc, unit, flow_type = self.acts_indices[ind]
         _ = lambda x: x if x != 0 else 1.0
+
+        def fix_key(key: tuple) -> tuple:
+            if key in self.dependency_mapping:
+                return self.dependency_mapping[key]
+            else:
+                return self.dependency_mapping[(self.outdated_flows.get(key[0], key[0]), key[1], key[2], key[3])]
+
         return {
             "name": name,
             "product": ref,
@@ -411,7 +421,7 @@ class Unfold:
             "categories": cat,
             "type": flow_type,
             "amount": amount if flow_type != "production" else _(amount),
-            "input": self.dependency_mapping[(name, ref, loc, cat)]
+            "input": fix_key((name, ref, loc, cat))
             if flow_type == "biosphere"
             else (
                 scenario_name,
@@ -680,7 +690,9 @@ class Unfold:
             # remove datasets that are not in the current scenario
             new_db = self.filter_out_datasets(new_db, i["name"])
 
-            # Add the current scenario's database to the list of databases to return.
+
+            # Add the current scenario's database
+            # to the list of databases to return.
             databases_to_return.append(new_db)
 
         return databases_to_return
@@ -696,15 +708,19 @@ class Unfold:
         df_gr = (
             self.scenario_df.groupby("to activity name")
             .sum(numeric_only=True)
-            .loc[:, [scenario_name]]
         )
+
         datasets_not_in_scenario = df_gr.loc[
-            df_gr[scenario_name] == 0, :
+            (df_gr[scenario_name] == 0)
+            & (df_gr.sum(1) != 0), :
         ].index.tolist()
+
+        print(datasets_not_in_scenario)
 
         # Remove datasets that are not in the current scenario.
         database = [
-            act for act in database if act["name"] not in datasets_not_in_scenario
+            act for act in database
+            if act["name"] not in datasets_not_in_scenario
         ]
 
         return database

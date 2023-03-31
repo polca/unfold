@@ -23,8 +23,6 @@ from .data_cleaning import (
     DATA_DIR,
     check_commonality_between_databases,
     check_mandatory_fields,
-    get_biosphere_code,
-    get_outdated_flows,
 )
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
@@ -109,8 +107,6 @@ class Fold:
     """
 
     def __init__(self):
-        self.bio_dict = get_biosphere_code()
-        self.outdated_flows = get_outdated_flows()
         self.exc_codes = {}
         self.source = None
         self.databases_to_fold = []
