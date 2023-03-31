@@ -32,9 +32,9 @@ from .data_cleaning import (
     check_for_duplicates,
     correct_fields_format,
     get_list_of_unique_datasets,
+    get_outdated_flows,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    get_outdated_flows
 )
 from .export import UnfoldExporter
 from .utils import HiddenPrints
@@ -411,7 +411,9 @@ class Unfold:
             if key in self.dependency_mapping:
                 return self.dependency_mapping[key]
             else:
-                return self.dependency_mapping[(self.outdated_flows.get(key[0], key[0]), key[1], key[2], key[3])]
+                return self.dependency_mapping[
+                    (self.outdated_flows.get(key[0], key[0]), key[1], key[2], key[3])
+                ]
 
         return {
             "name": name,
@@ -704,21 +706,16 @@ class Unfold:
         """
 
         # Get the list of datasets not used in the current scenario.
-        df_gr = (
-            self.scenario_df.groupby("to activity name")
-            .sum(numeric_only=True)
-        )
+        df_gr = self.scenario_df.groupby("to activity name").sum(numeric_only=True)
 
         datasets_not_in_scenario = df_gr.loc[
-            (df_gr[scenario_name] == 0)
-            & (df_gr.sum(1) != 0), :
+            (df_gr[scenario_name] == 0) & (df_gr.sum(1) != 0), :
         ].index.tolist()
 
 
         # Remove datasets that are not in the current scenario.
         database = [
-            act for act in database
-            if act["name"] not in datasets_not_in_scenario
+            act for act in database if act["name"] not in datasets_not_in_scenario
         ]
 
         return database

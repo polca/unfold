@@ -79,7 +79,9 @@ def check_exchanges_input(database, input_mapping):
     return database
 
 
-def add_biosphere_links(data: List[dict], mapping: dict, delete_missing: bool = False) -> List[dict]:
+def add_biosphere_links(
+    data: List[dict], mapping: dict, delete_missing: bool = False
+) -> List[dict]:
     """Add links for biosphere exchanges to :attr:`import_db`
     Modifies the :attr:`import_db` attribute in place.
     Also checks for outdated biosphere flows and replaces them with the
@@ -127,7 +129,7 @@ def check_for_duplicates(db: List[dict], data: List[dict]) -> List[dict]:
         (x["name"].lower(), x["reference product"].lower(), x["location"])
         for x in data
         if (x["name"].lower(), x["reference product"].lower(), x["location"])
-           in db_names
+        in db_names
     ]
 
     if len(already_exist) > 0:
@@ -255,9 +257,9 @@ def correct_fields_format(data: list, name: str) -> list:
                 dataset["parameters"] = [dataset["parameters"]]
 
             if (
-                    dataset["parameters"] is None
-                    or dataset["parameters"] == {}
-                    or dataset["parameters"] == []
+                dataset["parameters"] is None
+                or dataset["parameters"] == {}
+                or dataset["parameters"] == []
             ):
                 del dataset["parameters"]
 
@@ -304,8 +306,8 @@ def check_mandatory_fields(data: list) -> list:
         for field in dataset_fields:
             if field not in dataset:
                 if (
-                        field in ["reference product", "location", "unit", "name"]
-                        and "exchanges" in dataset
+                    field in ["reference product", "location", "unit", "name"]
+                    and "exchanges" in dataset
                 ):
                     for exc in dataset["exchanges"]:
                         if exc["type"] == "production":
