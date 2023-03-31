@@ -712,7 +712,6 @@ class Unfold:
             (df_gr[scenario_name] == 0) & (df_gr.sum(1) != 0), :
         ].index.tolist()
 
-
         # Remove datasets that are not in the current scenario.
         database = [
             act for act in database if act["name"] not in datasets_not_in_scenario
