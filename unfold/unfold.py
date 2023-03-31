@@ -690,7 +690,6 @@ class Unfold:
             # remove datasets that are not in the current scenario
             new_db = self.filter_out_datasets(new_db, i["name"])
 
-
             # Add the current scenario's database
             # to the list of databases to return.
             databases_to_return.append(new_db)
@@ -715,7 +714,6 @@ class Unfold:
             & (df_gr.sum(1) != 0), :
         ].index.tolist()
 
-        print(datasets_not_in_scenario)
 
         # Remove datasets that are not in the current scenario.
         database = [

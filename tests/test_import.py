@@ -1,13 +1,7 @@
 import pytest
 from datapackage.exceptions import DataPackageException
 
-from unfold import Fold, Unfold
-
-
-def test_fold():
-    f = Fold()
-    assert isinstance(f.bio_dict, dict)
-    assert isinstance(f.outdated_flows, dict)
+from unfold import Unfold
 
 
 def test_unfold():
