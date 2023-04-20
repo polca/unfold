@@ -40,11 +40,14 @@ def remove_missing_fields(data: List[dict]) -> List[dict]:
 
         for field in list(exc.keys()):
             if exc[field] is None or exc[field] == "None":
-                del exc[field]
+                if field in exc:
+                    del exc[field]
             if exc["type"] == "biosphere" and field in FORBIDDEN_FIELDS_BIO:
-                del exc[field]
+                if field in exc:
+                    del exc[field]
             if exc["type"] == "technosphere" and field in FORBIDDEN_FIELDS_TECH:
-                del exc[field]
+                if field in exc:
+                    del exc[field]
 
         return exc
 

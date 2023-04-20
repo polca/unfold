@@ -55,6 +55,39 @@ def del_all(mapping, to_remove):
     return mapping
 
 
+def get_list_unique_exchanges(databases: list) -> list:
+    """
+    Gets a list of all unique exchanges found in a list of databases.
+
+    :param databases: A list of Brightway2-style databases to extract unique exchanges from.
+    :return: A list of tuples representing unique exchanges, where each tuple contains the following information:
+        - name: The name of the exchange.
+        - product: The reference product of the exchange.
+        - categories: The categories of the exchange.
+        - location: The location of the exchange.
+        - unit: The unit of the exchange.
+        - type: The type of the exchange (either "technosphere" or "biosphere").
+    """
+
+    return list(
+        set(
+            [
+                (
+                    exchange["name"],
+                    exchange.get("product"),
+                    exchange.get("categories"),
+                    exchange.get("location"),
+                    exchange.get("unit"),
+                    exchange.get("type"),
+                )
+                for database in databases
+                for dataset in database
+                for exchange in dataset["exchanges"]
+            ]
+        )
+    )
+
+
 class Unfold:
     """Extracts datapackage files."""
 
@@ -73,6 +106,7 @@ class Unfold:
         self.databases_to_export = {}
         self.dependency_mapping = {}
         self.factors = {}
+        self.name = None
 
     def show_scenarios(self):
         """Shows the scenarios."""
@@ -290,38 +324,6 @@ class Unfold:
             self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
         )
 
-    def get_list_unique_exchanges(self, databases: list) -> list:
-        """
-        Gets a list of all unique exchanges found in a list of databases.
-
-        :param databases: A list of Brightway2-style databases to extract unique exchanges from.
-        :return: A list of tuples representing unique exchanges, where each tuple contains the following information:
-            - name: The name of the exchange.
-            - product: The reference product of the exchange.
-            - categories: The categories of the exchange.
-            - location: The location of the exchange.
-            - unit: The unit of the exchange.
-            - type: The type of the exchange (either "technosphere" or "biosphere").
-        """
-
-        return list(
-            set(
-                [
-                    (
-                        exchange["name"],
-                        exchange.get("product"),
-                        exchange.get("categories"),
-                        exchange.get("location"),
-                        exchange.get("unit"),
-                        exchange.get("type"),
-                    )
-                    for database in databases
-                    for dataset in database
-                    for exchange in dataset["exchanges"]
-                ]
-            )
-        )
-
     def store_datasets_metadata(self) -> None:
         """
         Stores metadata for each dataset in the database attribute.
@@ -359,7 +361,7 @@ class Unfold:
     def generate_activities_indices(self) -> None:
         """Generates the indices of the unique activities."""
         # Get all unique activities from self.database.
-        list_unique_acts = self.get_list_unique_exchanges(databases=[self.database])
+        list_unique_acts = get_list_unique_exchanges(databases=[self.database])
 
         # Add additional exchanges to list_unique_acts.
         for act in list_unique_acts:
@@ -618,7 +620,7 @@ class Unfold:
             # Get the dictionary representing the current activity from the database.
             act = self.get_act_dict_structure(
                 ind=k,
-                scenario_name=self.package.descriptor["name"],
+                scenario_name=self.name or self.package.descriptor["name"],
             )
 
             # Update the activity dictionary with metadata.
@@ -629,7 +631,7 @@ class Unfold:
                 self.get_exchange(
                     ind=j,
                     amount=matrix[j, k, 0],
-                    scenario_name=self.package.descriptor["name"],
+                    scenario_name=self.name or self.package.descriptor["name"],
                 )
                 for j in v
             )
@@ -920,7 +922,9 @@ class Unfold:
         # Create a new scenario dataframe from the updated factors dictionary
         self.scenario_df = pd.DataFrame.from_dict(self.factors).T.reset_index()
 
-        # Rename columns and add new columns for database information and metadata
+        # Rename columns
+        # and add new columns
+        # for database information and metadata
         self.scenario_df.columns = [
             "to activity name",
             "to reference product",
@@ -934,13 +938,22 @@ class Unfold:
             "flow type",
         ] + [s["name"] for s in self.scenarios]
 
-        self.scenario_df["to database"] = self.package.descriptor["name"]
+        self.scenario_df["to database"] = self.name or self.package.descriptor["name"]
         self.scenario_df["to categories"] = None
         self.scenario_df["to key"] = None
         self.scenario_df["from key"] = None
         self.scenario_df = self.scenario_df.replace({np.nan: None})
 
-        # Use the dependency_mapping dictionary to add "from key" and "to key" columns
+        # if self.name is not None, we change the name of the database
+        # in self.dependency_mapping to the name of the superstructure
+        if self.name:
+            self.dependency_mapping = {
+                k: (self.name, v[1]) if v[0] == self.package.descriptor["name"] else v
+                for k, v in self.dependency_mapping.items()
+            }
+
+        # Use the dependency_mapping dictionary
+        # to add "from key" and "to key" columns
         self.scenario_df.loc[:, "from key"] = self.scenario_df.apply(
             lambda x: self.dependency_mapping.get(
                 (
@@ -967,7 +980,7 @@ class Unfold:
         # Add "from database" column based on flow type
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "technosphere"), "from database"
-        ] = self.package.descriptor["name"]
+        ] = self.name or self.package.descriptor["name"]
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "biosphere"), "from database"
         ] = "biosphere3"
@@ -995,6 +1008,7 @@ class Unfold:
         scenarios: List[int] = None,
         dependencies: dict = None,
         superstructure: bool = False,
+        name: str = None,
     ):
         """
         unfold() is a method of the Unfold class, which extracts specific scenarios from the input LCA database and writes them as new databases.
@@ -1002,6 +1016,7 @@ class Unfold:
         :param scenarios: A list of integers indicating the indices of the scenarios to extract. If None, all scenarios are extracted. Default is None.
         :param dependencies: A dictionary containing additional inventory databases that may be needed for extraction. Default is None.
         :param superstructure: A boolean indicating whether to generate a scenario difference file and a superstructure database. Default is False.
+        :param name: A string indicating the name of the superstructure database. Default is None.
         :return: None
 
         Behavior:
@@ -1013,10 +1028,11 @@ class Unfold:
         Calls the generate_factors() method to generate the factors for the scenarios.
         If superstructure is False, calls the generate_single_databases() method to generate a separate LCA database for each scenario, and stores them in the databases_to_export dictionary.
         If superstructure is True, calls the format_superstructure_dataframe() method to generate a scenario difference file and a superstructure database.
-        Calls the write() method to write the databases to disk.
+        Calls write() method to write the databases to disk.
 
         """
 
+        self.name = name
         self.check_dependencies(dependencies)
         self.extract_source_database()
         self.extract_additional_inventories()
@@ -1063,7 +1079,7 @@ class Unfold:
         else:
             try:
                 self.scenario_df.to_excel(
-                    f"{self.package.descriptor['name']}.xlsx", index=False
+                    f"{self.name or self.package.descriptor['name']}.xlsx", index=False
                 )
             except ValueError:
                 # from https://stackoverflow.com/questions/66356152/splitting-a-dataframe-into-multiple-sheets
@@ -1081,14 +1097,14 @@ class Unfold:
             )
             print("")
             print("Writing superstructure database...")
-            change_db_name(self.database, self.package.descriptor["name"])
+            change_db_name(self.database, self.name or self.package.descriptor["name"])
             self.database = check_exchanges_input(
                 self.database, self.dependency_mapping
             )
             link_internal(self.database)
             check_internal_linking(self.database)
             check_duplicate_codes(self.database)
-            correct_fields_format(self.database, self.package.descriptor["name"])
+            correct_fields_format(self.database, self.name or self.package.descriptor["name"])
             UnfoldExporter(
-                self.package.descriptor["name"], self.database
+                self.name or self.package.descriptor["name"], self.database
             ).write_database()
