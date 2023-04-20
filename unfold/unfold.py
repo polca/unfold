@@ -414,25 +414,56 @@ class Unfold:
                 return self.dependency_mapping[key]
             else:
                 if key[0] in self.outdated_flows:
-                    if (self.outdated_flows[key[0]], key[1], key[2], key[3]) in self.dependency_mapping:
+                    if (
+                        self.outdated_flows[key[0]],
+                        key[1],
+                        key[2],
+                        key[3],
+                    ) in self.dependency_mapping:
                         return self.dependency_mapping[
                             (self.outdated_flows[key[0]], key[1], key[2], key[3])
                         ]
-                    elif (self.outdated_flows[key[0]].replace(", ion", ""), key[1], key[2], key[3]) in self.dependency_mapping:
+                    elif (
+                        self.outdated_flows[key[0]].replace(", ion", ""),
+                        key[1],
+                        key[2],
+                        key[3],
+                    ) in self.dependency_mapping:
                         return self.dependency_mapping[
-                            (self.outdated_flows[key[0]].replace(", ion", ""), key[1], key[2], key[3])
+                            (
+                                self.outdated_flows[key[0]].replace(", ion", ""),
+                                key[1],
+                                key[2],
+                                key[3],
+                            )
                         ]
-                    elif (self.outdated_flows[key[0]] + ", ion", key[1], key[2], key[3]) in self.dependency_mapping:
+                    elif (
+                        self.outdated_flows[key[0]] + ", ion",
+                        key[1],
+                        key[2],
+                        key[3],
+                    ) in self.dependency_mapping:
                         return self.dependency_mapping[
-                            (self.outdated_flows[key[0]] + ", ion", key[1], key[2], key[3])
+                            (
+                                self.outdated_flows[key[0]] + ", ion",
+                                key[1],
+                                key[2],
+                                key[3],
+                            )
                         ]
-                    elif (key[0] + ", in ground", key[1], key[2], key[3]) in self.dependency_mapping:
+                    elif (
+                        key[0] + ", in ground",
+                        key[1],
+                        key[2],
+                        key[3],
+                    ) in self.dependency_mapping:
                         return self.dependency_mapping[
                             (key[0] + ", in ground", key[1], key[2], key[3])
                         ]
                     else:
                         print("Could not find key", key)
                         return key
+
         return {
             "name": name,
             "product": ref,
@@ -979,7 +1010,7 @@ class Unfold:
         # Add "from database" column based on flow type
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "technosphere"), "from database"
-        ] = self.name or self.package.descriptor["name"]
+        ] = (self.name or self.package.descriptor["name"])
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "biosphere"), "from database"
         ] = "biosphere3"
@@ -1103,7 +1134,9 @@ class Unfold:
             link_internal(self.database)
             check_internal_linking(self.database)
             check_duplicate_codes(self.database)
-            correct_fields_format(self.database, self.name or self.package.descriptor["name"])
+            correct_fields_format(
+                self.database, self.name or self.package.descriptor["name"]
+            )
             UnfoldExporter(
                 self.name or self.package.descriptor["name"], self.database
             ).write_database()
