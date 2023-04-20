@@ -411,10 +411,26 @@ class Unfold:
             if key in self.dependency_mapping:
                 return self.dependency_mapping[key]
             else:
-                return self.dependency_mapping[
-                    (self.outdated_flows.get(key[0], key[0]), key[1], key[2], key[3])
-                ]
-
+                if key[0] in self.outdated_flows:
+                    if (self.outdated_flows[key[0]], key[1], key[2], key[3]) in self.dependency_mapping:
+                        return self.dependency_mapping[
+                            (self.outdated_flows[key[0]], key[1], key[2], key[3])
+                        ]
+                    elif (self.outdated_flows[key[0]].replace(", ion", ""), key[1], key[2], key[3]) in self.dependency_mapping:
+                        return self.dependency_mapping[
+                            (self.outdated_flows[key[0]].replace(", ion", ""), key[1], key[2], key[3])
+                        ]
+                    elif (self.outdated_flows[key[0]] + ", ion", key[1], key[2], key[3]) in self.dependency_mapping:
+                        return self.dependency_mapping[
+                            (self.outdated_flows[key[0]] + ", ion", key[1], key[2], key[3])
+                        ]
+                    elif (key[0] + ", in ground", key[1], key[2], key[3]) in self.dependency_mapping:
+                        return self.dependency_mapping[
+                            (key[0] + ", in ground", key[1], key[2], key[3])
+                        ]
+                    else:
+                        print("Could not find key", key)
+                        return key
         return {
             "name": name,
             "product": ref,
