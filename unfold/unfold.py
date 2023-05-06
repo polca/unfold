@@ -300,7 +300,10 @@ class Unfold:
         """Extracts additional inventories."""
         print("Extracting additional inventories...")
         with HiddenPrints():
-            i = bw2io.CSVImporter(self.package.get_resource("inventories").source)
+            filepath = self.package.get_resource("inventories").source
+            # ensure that all slashes in filepath are forward slashes
+            filepath = filepath.replace("\\", "/")
+            i = bw2io.CSVImporter(filepath)
             i.strategies = i.strategies[:4]
             i.apply_strategies()
             i.data = self.clean_imported_inventory(i.data)
@@ -390,6 +393,57 @@ class Unfold:
         else:
             return str(uuid.uuid4().hex)
 
+    def find_correct_id(self, key: tuple) -> [tuple, None]:
+
+        if key[0] in self.outdated_flows:
+            if (
+                self.outdated_flows[key[0]],
+                key[1],
+                key[2],
+                key[3],
+            ) in self.dependency_mapping:
+                return self.outdated_flows[key[0]], key[1], key[2], key[3]
+
+            elif (
+                self.outdated_flows[key[0]].replace(", ion", ""),
+                key[1],
+                key[2],
+                key[3],
+            ) in self.dependency_mapping:
+                return (
+                    self.outdated_flows[key[0]].replace(", ion", ""),
+                    key[1],
+                    key[2],
+                    key[3],
+                )
+
+            elif (
+                self.outdated_flows[key[0]] + ", ion",
+                key[1],
+                key[2],
+                key[3],
+            ) in self.dependency_mapping:
+                return self.outdated_flows[key[0]] + ", ion", key[1], key[2], key[3]
+
+            elif (
+                key[0] + ", in ground",
+                key[1],
+                key[2],
+                key[3],
+            ) in self.dependency_mapping:
+                return key[0] + ", in ground", key[1], key[2], key[3]
+
+            else:
+                print("Could not find key", key)
+                return key
+
+    def fix_key(self, key: tuple) -> tuple:
+
+        if key in self.dependency_mapping:
+            return self.dependency_mapping[key]
+        else:
+            return self.dependency_mapping[self.find_correct_id(key)]
+
     def get_exchange(
         self,
         ind: int,
@@ -409,30 +463,6 @@ class Unfold:
         name, ref, cat, loc, unit, flow_type = self.acts_indices[ind]
         _ = lambda x: x if x != 0 else 1.0
 
-        def fix_key(key: tuple) -> tuple:
-            if key in self.dependency_mapping:
-                return self.dependency_mapping[key]
-            else:
-                if key[0] in self.outdated_flows:
-                    if (self.outdated_flows[key[0]], key[1], key[2], key[3]) in self.dependency_mapping:
-                        return self.dependency_mapping[
-                            (self.outdated_flows[key[0]], key[1], key[2], key[3])
-                        ]
-                    elif (self.outdated_flows[key[0]].replace(", ion", ""), key[1], key[2], key[3]) in self.dependency_mapping:
-                        return self.dependency_mapping[
-                            (self.outdated_flows[key[0]].replace(", ion", ""), key[1], key[2], key[3])
-                        ]
-                    elif (self.outdated_flows[key[0]] + ", ion", key[1], key[2], key[3]) in self.dependency_mapping:
-                        return self.dependency_mapping[
-                            (self.outdated_flows[key[0]] + ", ion", key[1], key[2], key[3])
-                        ]
-                    elif (key[0] + ", in ground", key[1], key[2], key[3]) in self.dependency_mapping:
-                        return self.dependency_mapping[
-                            (key[0] + ", in ground", key[1], key[2], key[3])
-                        ]
-                    else:
-                        print("Could not find key", key)
-                        return key
         return {
             "name": name,
             "product": ref,
@@ -441,7 +471,7 @@ class Unfold:
             "categories": cat,
             "type": flow_type,
             "amount": amount if flow_type != "production" else _(amount),
-            "input": fix_key((name, ref, loc, cat))
+            "input": self.fix_key((name, ref, loc, cat))
             if flow_type == "biosphere"
             else (
                 scenario_name,
@@ -529,7 +559,7 @@ class Unfold:
             s_name, s_prod, s_loc, s_cat, s_unit, s_type = list(flow_id)[4:]
 
             # Look up the index of the consumer activity in the reversed activities index.
-            consumer_idx = self.reversed_acts_indices[
+            consumer_idx = self.reversed_acts_indices.get(
                 (
                     c_name,
                     c_prod,
@@ -537,8 +567,9 @@ class Unfold:
                     c_loc,
                     c_unit,
                     "production",
-                )
-            ]
+                ),
+                None,
+            )
 
             # Look up the index of the supplier activity in the reversed activities index.
             supplier_id = (
@@ -549,13 +580,21 @@ class Unfold:
                 s_unit,
                 s_type,
             )
-            supplier_idx = self.reversed_acts_indices[supplier_id]
+            supplier_idx = self.reversed_acts_indices.get(
+                supplier_id,
+                None,
+            )
 
             # Multiply the appropriate element of the matrix by the scaling factor for the given scenario.
             # Use the lambda function defined above to avoid multiplying by zero.
-            matrix[supplier_idx, consumer_idx] = factor[scenario_name] * _(
-                matrix[supplier_idx, consumer_idx]
-            )
+            if supplier_idx is not None and consumer_idx is not None:
+                matrix[supplier_idx, consumer_idx] = factor[scenario_name] * _(
+                    matrix[supplier_idx, consumer_idx]
+                )
+            else:
+                print(
+                    f"Could not find activity for flow {flow_id} in scenario {scenario_name}."
+                )
 
         # Return the scaled matrix.
         return matrix
@@ -822,9 +861,10 @@ class Unfold:
         )
 
         # Load the scenario dataframe from the `scenario_data` resource.
-        self.scenario_df = pd.DataFrame(
-            self.package.get_resource("scenario_data").read(keyed=True)
-        )
+        filepath = self.package.get_resource("scenario_data").source
+        # ensure that all slashes in filepath are forward slashes
+        filepath = filepath.replace("\\", "/")
+        self.scenario_df = pd.read_csv(filepath, keep_default_na=False, na_values="")
 
         # Remove rows corresponding to production flows.
         self.scenario_df = self.scenario_df.loc[
@@ -845,9 +885,11 @@ class Unfold:
         self.scenario_df["to categories"] = self.scenario_df["to categories"].apply(
             lambda x: literal_eval(str(x))
         )
+
         self.scenario_df["from key"] = self.scenario_df["from key"].apply(
             lambda x: literal_eval(str(x))
         )
+
         self.scenario_df["to key"] = self.scenario_df["to key"].apply(
             lambda x: literal_eval(str(x))
         )
@@ -904,6 +946,7 @@ class Unfold:
                     "production",
                 )
             ]
+
             supplier_id = (
                 s_name,
                 s_prod,
@@ -912,6 +955,27 @@ class Unfold:
                 s_unit,
                 s_type,
             )
+
+            if supplier_id not in self.reversed_acts_indices:
+                try:
+                    (
+                        s_name,
+                        s_prod,
+                        s_loc,
+                        s_cat,
+                    ) = self.find_correct_id((s_name, s_prod, s_loc, s_cat))
+
+                    supplier_id = (
+                        s_name,
+                        s_prod,
+                        s_cat,
+                        s_loc,
+                        s_unit,
+                        s_type,
+                    )
+                except TypeError:
+                    print("not found key for", supplier_id)
+
             supplier_idx = self.reversed_acts_indices[supplier_id]
 
             # Update the factor values for each scenario by multiplying with the corresponding matrix value
@@ -979,7 +1043,7 @@ class Unfold:
         # Add "from database" column based on flow type
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "technosphere"), "from database"
-        ] = self.name or self.package.descriptor["name"]
+        ] = (self.name or self.package.descriptor["name"])
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "biosphere"), "from database"
         ] = "biosphere3"
@@ -1103,7 +1167,9 @@ class Unfold:
             link_internal(self.database)
             check_internal_linking(self.database)
             check_duplicate_codes(self.database)
-            correct_fields_format(self.database, self.name or self.package.descriptor["name"])
+            correct_fields_format(
+                self.database, self.name or self.package.descriptor["name"]
+            )
             UnfoldExporter(
                 self.name or self.package.descriptor["name"], self.database
             ).write_database()

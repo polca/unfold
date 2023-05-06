@@ -182,7 +182,14 @@ def add_product_field_to_exchanges(data: List[dict], db: List[dict]) -> List[dic
             if exchange["type"] == "technosphere":
                 # Check if the field 'product' is present
                 if "product" not in exchange:
-                    exchange["product"] = correct_product_field(exchange, data, db)
+                    try:
+                        exchange["product"] = correct_product_field(exchange, data, db)
+                    except KeyError:
+                        print(
+                            "No activity found for exchange {}{} in: {}".format(
+                                exchange["name"], exchange["location"], dataset["name"]
+                            )
+                        )
 
     # Add a `code` field if missing
     for dataset in data:
