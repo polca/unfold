@@ -394,7 +394,6 @@ class Unfold:
             return str(uuid.uuid4().hex)
 
     def find_correct_id(self, key: tuple) -> [tuple, None]:
-
         if key[0] in self.outdated_flows:
             if (
                 self.outdated_flows[key[0]],
@@ -438,7 +437,6 @@ class Unfold:
                 return key
 
     def fix_key(self, key: tuple) -> tuple:
-
         if key in self.dependency_mapping:
             return self.dependency_mapping[key]
         else:
