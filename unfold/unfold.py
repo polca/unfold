@@ -434,7 +434,7 @@ class Unfold:
 
             else:
                 raise f"Could not find key: {key}"
-                #return key
+                # return key
 
     def fix_key(self, key: tuple) -> tuple:
         if key in self.dependency_mapping:
@@ -761,7 +761,9 @@ class Unfold:
         """
 
         # Get the list of datasets not used in the current scenario.
-        df_gr = self.scenario_df.groupby(["to activity name", "to reference product", "to location"]).sum(numeric_only=True)
+        df_gr = self.scenario_df.groupby(
+            ["to activity name", "to reference product", "to location"]
+        ).sum(numeric_only=True)
 
         datasets_not_in_scenario = df_gr.loc[
             (df_gr[scenario_name] == 0) & (df_gr.sum(1) != 0), :
@@ -778,18 +780,20 @@ class Unfold:
 
         # Remove datasets that are not in the current scenario.
         database = [
-            act for act in database
-            if (act["name"], act["reference product"], act["location"]) not in datasets_not_in_scenario
+            act
+            for act in database
+            if (act["name"], act["reference product"], act["location"])
+            not in datasets_not_in_scenario
         ]
 
         return database
 
-    def check_usage(self, name: str, product: str, location: str, database: list) -> bool:
+    def check_usage(
+        self, name: str, product: str, location: str, database: list
+    ) -> bool:
         # check that name, product, location are not used in any exchange of database
 
         pass
-
-
 
     def generate_superstructure_database(self) -> List[dict]:
         """
