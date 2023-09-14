@@ -433,8 +433,8 @@ class Unfold:
                 return key[0] + ", in ground", key[1], key[2], key[3]
 
             else:
-                print("Could not find key", key)
-                return key
+                raise f"Could not find key: {key}"
+                #return key
 
     def fix_key(self, key: tuple) -> tuple:
         if key in self.dependency_mapping:
@@ -761,18 +761,35 @@ class Unfold:
         """
 
         # Get the list of datasets not used in the current scenario.
-        df_gr = self.scenario_df.groupby("to activity name").sum(numeric_only=True)
+        df_gr = self.scenario_df.groupby(["to activity name", "to reference product", "to location"]).sum(numeric_only=True)
 
         datasets_not_in_scenario = df_gr.loc[
             (df_gr[scenario_name] == 0) & (df_gr.sum(1) != 0), :
         ].index.tolist()
 
+        # remove items from datasets_not_in_scenario that are
+        # used in exchanges of database
+        for act in database:
+            for exc in act["exchanges"]:
+                if exc["type"] == "technosphere":
+                    key = (exc["name"], exc["product"], exc["location"])
+                    if key in datasets_not_in_scenario:
+                        datasets_not_in_scenario.remove(key)
+
         # Remove datasets that are not in the current scenario.
         database = [
-            act for act in database if act["name"] not in datasets_not_in_scenario
+            act for act in database
+            if (act["name"], act["reference product"], act["location"]) not in datasets_not_in_scenario
         ]
 
         return database
+
+    def check_usage(self, name: str, product: str, location: str, database: list) -> bool:
+        # check that name, product, location are not used in any exchange of database
+
+        pass
+
+
 
     def generate_superstructure_database(self) -> List[dict]:
         """
@@ -1097,7 +1114,6 @@ class Unfold:
         self.check_dependencies(dependencies)
         self.extract_source_database()
         self.extract_additional_inventories()
-
         self.format_dataframe(scenarios=scenarios, superstructure=superstructure)
         self.generate_factors()
 
