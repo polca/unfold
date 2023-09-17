@@ -3,12 +3,12 @@ Contains the Unfold class, to extract datapackage files.
 
 """
 import copy
+import pickle
 import uuid
 from ast import literal_eval
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Union
-import pickle
 
 import bw2data
 import bw2io
@@ -41,6 +41,7 @@ from .export import UnfoldExporter
 from .utils import HiddenPrints
 
 DIR_CACHED_DB = Path(__file__).parent / "cached_databases"
+
 
 def _c(value):
     """Converts zero to one."""
@@ -268,19 +269,13 @@ class Unfold:
         or encountering issues with
         inventories.
         """
-        [
-            f.unlink()
-            for f in Path(DIR_CACHED_DB).glob("*")
-        ]
+        [f.unlink() for f in Path(DIR_CACHED_DB).glob("*")]
 
     def check_cached_database(self, name) -> list:
-
         # check that directory exists, otherwise create it
         Path(DIR_CACHED_DB).mkdir(parents=True, exist_ok=True)
 
-        file_name = Path(
-            DIR_CACHED_DB / f"cached_{name}.pickle"
-        )
+        file_name = Path(DIR_CACHED_DB / f"cached_{name}.pickle")
 
         # check that file path leads to an existing file
         if file_name.exists():
