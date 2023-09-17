@@ -32,7 +32,7 @@ def package_files(directory):
 
 setup(
     name="unfold",
-    version="1.0.9",
+    version="1.1.0",
     python_requires=">=3.9",
     packages=packages,
     author="Romain Sacchi <romain.sacchi@psi.ch>",
@@ -42,7 +42,7 @@ setup(
     install_requires=[
         "numpy",
         "pandas",
-        "bw2io==0.8.7",
+        "bw2io",
         "bw2data",
         "prettytable",
         "datapackage",
