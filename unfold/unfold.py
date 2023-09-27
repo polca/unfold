@@ -2,8 +2,8 @@
 Contains the Unfold class, to extract datapackage files.
 
 """
-import os
 import copy
+import os
 import pickle
 import uuid
 from ast import literal_eval
@@ -1220,9 +1220,7 @@ class Unfold:
                 index=False,
             )
 
-            print(
-                f"Scenario difference file exported to {filename}.csv!"
-            )
+            print(f"Scenario difference file exported to {filename}.csv!")
             print("")
             print("Writing superstructure database...")
             change_db_name(self.database, self.name or self.package.descriptor["name"])
