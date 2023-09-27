@@ -1144,6 +1144,7 @@ class Unfold:
         :param dependencies: A dictionary containing additional inventory databases that may be needed for extraction. Default is None.
         :param superstructure: A boolean indicating whether to generate a scenario difference file and a superstructure database. Default is False.
         :param name: A string indicating the name of the superstructure database. Default is None.
+        :param export_dir: A string indicating the directory to which the scenario difference file should be exported. Default is current working directory.
         :return: None
 
         Behavior:
@@ -1181,7 +1182,7 @@ class Unfold:
 
         self.write(superstructure=superstructure, export_dir=export_dir)
 
-    def write(self, superstructure: bool = False, export_dir: str = os.getcwd()):
+    def write(self, superstructure: bool = False, export_dir: str = None):
         """
         Write the databases.
         If superstructure is True, write the scenario difference file,
@@ -1212,6 +1213,9 @@ class Unfold:
                 source_db = {"name": "unknown", "version": "unknown"}
 
             filename = f"SDF {source_db['name']} {source_db['version']} {self.name or self.package.descriptor['name']}.csv"
+
+            if export_dir is None:
+                export_dir = os.getcwd()
 
             filename = os.path.join(export_dir, filename)
 
