@@ -1192,20 +1192,16 @@ class Unfold:
                 UnfoldExporter(scenario, database).write_database()
 
         else:
-            try:
-                self.scenario_df.to_excel(
-                    f"{self.name or self.package.descriptor['name']}.xlsx", index=False
-                )
-            except ValueError:
-                # from https://stackoverflow.com/questions/66356152/splitting-a-dataframe-into-multiple-sheets
-                GROUP_LENGTH = 1000000  # set nr of rows to slice df
-                with pd.ExcelWriter(
-                    f"{self.package.descriptor['name']}.xlsx"
-                ) as writer:
-                    for i in range(0, len(self.scenario_df), GROUP_LENGTH):
-                        self.scenario_df[i : i + GROUP_LENGTH].to_excel(
-                            writer, sheet_name=f"Row {i}", index=False, header=True
-                        )
+            source_db = [db for db in self.dependencies if db["type"] == "source"]
+
+            if len(source_db) == 1:
+                source_db = source_db[0]
+            else:
+                source_db = {"name": "unknown", "version": "unknown"}
+
+            self.scenario_df.to_csv(
+                f"SDF {source_db['name']} {source_db['version']} {self.name or self.package.descriptor['name']}.csv", index=False
+            )
 
             print(
                 f"Scenario difference file exported to {self.package.descriptor['name']}.xlsx!"
