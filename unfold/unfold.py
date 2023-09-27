@@ -482,7 +482,7 @@ class Unfold:
         scenario_name: str = None,
     ):
         """
-        Return an exchange in teh form of a dictionary.
+        Return an exchange in the form of a dictionary.
         If it has a value for "categories", we inder it is a biosphere flow.
         If not, it is either a technosphere or production flow.
 
@@ -918,11 +918,6 @@ class Unfold:
         filepath = filepath.replace("\\", "/")
         self.scenario_df = pd.read_csv(filepath, keep_default_na=False, na_values="")
 
-        # Remove rows corresponding to production flows.
-        self.scenario_df = self.scenario_df.loc[
-            (self.scenario_df["flow type"] != "production")
-        ]
-
         # Drop columns corresponding to scenarios that were removed.
         self.scenario_df = self.scenario_df.drop(scenarios_to_leave_out, axis=1)
 
@@ -1093,9 +1088,21 @@ class Unfold:
         )
 
         # Add "from database" column based on flow type
+        # set dtype of "from database" and "to database" to string
+
+        # create "from database" column
+        self.scenario_df.loc[:, "from database"] = None
+
+        self.scenario_df = self.scenario_df.astype(
+            {'from database':'string'},
+            {'to database':'string'},
+
+        )
+
         self.scenario_df.loc[
-            (self.scenario_df["flow type"] == "technosphere"), "from database"
+            (self.scenario_df["flow type"] == "technosphere")|(self.scenario_df["flow type"] == "production"), "from database"
         ] = (self.name or self.package.descriptor["name"])
+
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "biosphere"), "from database"
         ] = "biosphere3"
@@ -1191,7 +1198,7 @@ class Unfold:
                 UnfoldExporter(scenario, database).write_database()
 
         else:
-            source_db = [db for db in self.dependencies if db["type"] == "source"]
+            source_db = [db for db in self.dependencies if db.get("type") == "source"]
 
             if len(source_db) == 1:
                 source_db = source_db[0]
@@ -1204,7 +1211,7 @@ class Unfold:
             )
 
             print(
-                f"Scenario difference file exported to {self.package.descriptor['name']}.xlsx!"
+                f"Scenario difference file exported to {self.package.descriptor['name']}.csv!"
             )
             print("")
             print("Writing superstructure database...")
