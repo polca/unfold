@@ -2,6 +2,7 @@
 Contains the Unfold class, to extract datapackage files.
 
 """
+import os
 import copy
 import pickle
 import uuid
@@ -1130,6 +1131,7 @@ class Unfold:
         scenarios: List[int] = None,
         dependencies: dict = None,
         superstructure: bool = False,
+        export_dir: str = None,
         name: str = None,
     ):
         """
@@ -1174,15 +1176,16 @@ class Unfold:
             self.format_superstructure_dataframe()
             self.database = self.generate_superstructure_database()
 
-        self.write(superstructure=superstructure)
+        self.write(superstructure=superstructure, export_dir=export_dir)
 
-    def write(self, superstructure: bool = False):
+    def write(self, superstructure: bool = False, export_dir: str = os.getcwd()):
         """
         Write the databases.
         If superstructure is True, write the scenario difference file,
         along with a database.
 
         :param superstructure: bool, default False
+        :param export_dir: str, default current working directory
 
         """
 
@@ -1205,13 +1208,17 @@ class Unfold:
             else:
                 source_db = {"name": "unknown", "version": "unknown"}
 
+            filename = f"SDF {source_db['name']} {source_db['version']} {self.name or self.package.descriptor['name']}.csv"
+
+            filename = os.path.join(export_dir, filename)
+
             self.scenario_df.to_csv(
-                f"SDF {source_db['name']} {source_db['version']} {self.name or self.package.descriptor['name']}.csv",
+                filename,
                 index=False,
             )
 
             print(
-                f"Scenario difference file exported to {self.package.descriptor['name']}.csv!"
+                f"Scenario difference file exported to {filename}.csv!"
             )
             print("")
             print("Writing superstructure database...")
