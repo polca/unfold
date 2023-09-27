@@ -1095,14 +1095,17 @@ class Unfold:
         self.scenario_df.loc[:, "from database"] = None
 
         self.scenario_df = self.scenario_df.astype(
-            {'from database':'string'},
-            {'to database':'string'},
-
+            {"from database": "string"},
+            {"to database": "string"},
         )
 
         self.scenario_df.loc[
-            (self.scenario_df["flow type"] == "technosphere")|(self.scenario_df["flow type"] == "production"), "from database"
-        ] = (self.name or self.package.descriptor["name"])
+            (self.scenario_df["flow type"] == "technosphere")
+            | (self.scenario_df["flow type"] == "production"),
+            "from database",
+        ] = (
+            self.name or self.package.descriptor["name"]
+        )
 
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "biosphere"), "from database"
