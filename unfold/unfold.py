@@ -1199,7 +1199,8 @@ class Unfold:
                 source_db = {"name": "unknown", "version": "unknown"}
 
             self.scenario_df.to_csv(
-                f"SDF {source_db['name']} {source_db['version']} {self.name or self.package.descriptor['name']}.csv", index=False
+                f"SDF {source_db['name']} {source_db['version']} {self.name or self.package.descriptor['name']}.csv",
+                index=False,
             )
 
             print(
