@@ -274,8 +274,8 @@ class Unfold:
     def check_cached_database(self, name) -> list:
         # check that directory exists, otherwise create it
         Path(DIR_CACHED_DB).mkdir(parents=True, exist_ok=True)
-
-        file_name = Path(DIR_CACHED_DB / f"cached_{name}.pickle")
+        bw2io_version = "".join(tuple(map(str, bw2io.__version__)))
+        file_name = Path(DIR_CACHED_DB / f"cached_{name}_{bw2io_version}.pickle")
 
         # check that file path leads to an existing file
         if file_name.exists():
@@ -461,13 +461,19 @@ class Unfold:
                 return key[0] + ", in ground", key[1], key[2], key[3]
 
             else:
-                raise f"Could not find key: {key}"
+                print(f"Could not find key: {key}")
                 # return key
+
 
     def fix_key(self, key: tuple) -> tuple:
         if key in self.dependency_mapping:
             return self.dependency_mapping[key]
         else:
+            correct_id = self.find_correct_id(key)
+            if correct_id is None:
+                print(f"Could not find key: {key}")
+                return key
+
             return self.dependency_mapping[self.find_correct_id(key)]
 
     def get_exchange(
