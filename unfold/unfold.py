@@ -92,6 +92,42 @@ def get_list_unique_exchanges(databases: list) -> list:
     )
 
 
+def check_cached_database(name) -> list:
+    """
+    Checks if a cached database exists, and if not, extracts it.
+    :param name: name of the database
+    :return: the database
+    """
+
+    # check that directory exists, otherwise create it
+    Path(DIR_CACHED_DB).mkdir(parents=True, exist_ok=True)
+    bw2io_version = "".join(tuple(map(str, bw2io.__version__)))
+    file_name = Path(DIR_CACHED_DB / f"cached_{name}_{bw2io_version}.pickle")
+
+    # check that file path leads to an existing file
+    if file_name.exists() and len(bw2data.Database(name)) > 0:
+        # check that the database has same length as the cached one
+        database = pickle.load(open(file_name, "rb"))
+        if len(database) == len(bw2data.Database(name)):
+            # return the cached database
+            return pickle.load(open(file_name, "rb"))
+
+    # extract the database, pickle it for next time and return it
+    print("Cannot find cached database. Will create one now for next time...")
+    database = extract_brightway2_databases(name)
+    pickle.dump(database, open(file_name, "wb"))
+    return database
+
+
+def clear_cache():
+    """Clears the cache folder, except for files which contain __version__ in name.
+    Useful when updating `premise`
+    or encountering issues with
+    inventories.
+    """
+    [f.unlink() for f in Path(DIR_CACHED_DB).glob("*")]
+
+
 class Unfold:
     """Extracts datapackage files."""
 
@@ -258,36 +294,12 @@ class Unfold:
         """
 
         for dependency in self.dependencies:
-            database = self.check_cached_database(dependency["source"])
+            database = check_cached_database(dependency["source"])
 
             self.build_mapping_for_dependencies(database)
+
             if dependency.get("type") == "source":
                 self.database.extend(database)
-
-    def clear_existing_cache(self):
-        """Clears the cache folder, except for files which contain __version__ in name.
-        Useful when updating `premise`
-        or encountering issues with
-        inventories.
-        """
-        [f.unlink() for f in Path(DIR_CACHED_DB).glob("*")]
-
-    def check_cached_database(self, name) -> list:
-        # check that directory exists, otherwise create it
-        Path(DIR_CACHED_DB).mkdir(parents=True, exist_ok=True)
-        bw2io_version = "".join(tuple(map(str, bw2io.__version__)))
-        file_name = Path(DIR_CACHED_DB / f"cached_{name}_{bw2io_version}.pickle")
-
-        # check that file path leads to an existing file
-        if file_name.exists():
-            # return the cached database
-            return pickle.load(open(file_name, "rb"))
-
-        # extract the database, pickle it for next time and return it
-        print("Cannot find cached database. Will create one now for next time...")
-        database = extract_brightway2_databases(name)
-        pickle.dump(database, open(file_name, "wb"))
-        return database
 
     def clean_imported_inventory(self, data):
         """

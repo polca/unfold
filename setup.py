@@ -49,7 +49,7 @@ setup(
         "sparse",
         "scipy",
         "pyyaml",
-        "wurst>=0.3.3",
+        "wurst>=0.3.4",
         "pyprind",
     ],
     url="https://github.com/polca/premise",
