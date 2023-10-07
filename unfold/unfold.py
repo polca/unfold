@@ -1224,7 +1224,10 @@ class Unfold:
             else:
                 source_db = {"name": "unknown", "version": "unknown"}
 
-            filename = f"SDF {source_db['name']} {source_db['version']} {self.name or self.package.descriptor['name']}.csv"
+            if self.name:
+                filename = f"SDF {source_db['name']} {self.name}.csv"
+            else:
+                filename = f"SDF {source_db['name']} {source_db['version']} {self.package.descriptor['name']}.csv"
 
             if export_dir is None:
                 export_dir = os.getcwd()
