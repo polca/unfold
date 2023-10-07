@@ -1236,7 +1236,7 @@ class Unfold:
                 index=False,
             )
 
-            print(f"Scenario difference file exported to {filename}.csv!")
+            print(f"Scenario difference file exported to {filename}")
             print("")
             print("Writing superstructure database...")
             change_db_name(self.database, self.name or self.package.descriptor["name"])
