@@ -1227,7 +1227,7 @@ class Unfold:
                 check_duplicate_codes(database)
                 correct_fields_format(database, scenario)
                 print(f"Writing database for scenario {scenario}...")
-                write_brightway_database(scenario, database).write_database()
+                write_brightway_database(data=database, name=scenario).write_database()
 
         else:
             source_db = [db for db in self.dependencies if db.get("type") == "source"]
@@ -1267,5 +1267,5 @@ class Unfold:
                 self.database, self.name or self.package.descriptor["name"]
             )
             write_brightway_database(
-                self.name or self.package.descriptor["name"], self.database
+                data=self.database, name=self.name or self.package.descriptor["name"]
             ).write_database()
