@@ -2,16 +2,15 @@ import bw2calc
 import bw2data
 import bw2io
 import numpy as np
-import pytest
 import yaml
 
 from unfold import Fold, Unfold
 
-bw2data.projects.set_current("test")
-bw2io.bw2setup()
-
-
 def test_db_reproduction():
+
+    bw2data.projects.set_current("test")
+    bw2io.create_default_biosphere3()
+
     fp = "./tests/fixture/reference_database.yaml"
     with open(fp, "r") as stream:
         db = yaml.load(stream, Loader=yaml.FullLoader)
