@@ -929,7 +929,9 @@ class Unfold:
         filepath = self.package.get_resource("scenario_data").source
         # ensure that all slashes in filepath are forward slashes
         filepath = filepath.replace("\\", "/")
-        self.scenario_df = pd.read_csv(filepath, keep_default_na=False, na_values="", encoding="utf-8-sig")
+        self.scenario_df = pd.read_csv(
+            filepath, keep_default_na=False, na_values="", encoding="utf-8-sig"
+        )
 
         # Drop columns corresponding to scenarios that were removed.
         self.scenario_df = self.scenario_df.drop(scenarios_to_leave_out, axis=1)
@@ -1044,7 +1046,6 @@ class Unfold:
 
             for scenario, val in factor.items():
                 factor[scenario] = val * _(matrix[supplier_idx, consumer_idx])
-
 
         # Create a new scenario dataframe from the updated factors dictionary
         self.scenario_df = pd.DataFrame.from_dict(self.factors).T.reset_index()
