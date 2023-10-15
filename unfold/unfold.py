@@ -1221,13 +1221,12 @@ class Unfold:
         if not superstructure:
             for scenario, database in self.databases_to_export.items():
                 change_db_name(data=database, name=scenario)
-                # check_exchanges_input(database, self.dependency_mapping)
                 link_internal(database)
                 check_internal_linking(database)
                 check_duplicate_codes(database)
                 correct_fields_format(database, scenario)
                 print(f"Writing database for scenario {scenario}...")
-                write_brightway_database(data=database, name=scenario).write_database()
+                write_brightway_database(data=database, name=scenario)
 
         else:
             source_db = [db for db in self.dependencies if db.get("type") == "source"]
@@ -1268,4 +1267,4 @@ class Unfold:
             )
             write_brightway_database(
                 data=self.database, name=self.name or self.package.descriptor["name"]
-            ).write_database()
+            )
