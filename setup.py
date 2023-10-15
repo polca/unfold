@@ -42,7 +42,7 @@ setup(
     install_requires=[
         "numpy",
         "pandas",
-        "bw2io >=0.8.10",
+        "bw2io",
         "bw2data",
         "prettytable",
         "datapackage",
