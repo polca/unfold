@@ -1,6 +1,6 @@
 numpy
 pandas
-bw2io >=0.8.7, !=0.8.8
+bw2io >=0.8.10
 bw2data
 wurst>=0.3.3
 prettytable
