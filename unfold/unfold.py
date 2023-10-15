@@ -41,6 +41,7 @@ from .data_cleaning import (
 
 try:
     import bw_processing
+
     from .brightway25_export import write_brightway_database
 
 except ImportError:

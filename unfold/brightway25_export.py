@@ -1,12 +1,15 @@
-from bw2data import databases, Database
-from bw2io.importers.base_lci import LCIImporter
-from copy import copy
 import itertools
+from copy import copy
+
+from bw2data import Database, databases
+from bw2io.importers.base_lci import LCIImporter
+
 
 def write_brightway_database(data, name):
     # Restore parameters to Brightway2 format
     # which allows for uncertainty and comments
     BW25UnfoldExporter(name, data).write_database()
+
 
 class BW25UnfoldExporter(LCIImporter):
     """
@@ -27,7 +30,6 @@ class BW25UnfoldExporter(LCIImporter):
     # to allow existing databases
     # to be overwritten
     def write_database(self):
-
         def no_exchange_generator(data):
             for ds in data:
                 cp = copy(ds)
