@@ -6,8 +6,8 @@ import yaml
 
 from unfold import Fold, Unfold
 
-def test_db_reproduction():
 
+def test_db_reproduction():
     bw2data.projects.set_current("test")
     bw2io.create_default_biosphere3()
 
