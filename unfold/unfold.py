@@ -929,7 +929,7 @@ class Unfold:
         filepath = self.package.get_resource("scenario_data").source
         # ensure that all slashes in filepath are forward slashes
         filepath = filepath.replace("\\", "/")
-        self.scenario_df = pd.read_csv(filepath, keep_default_na=False, na_values="")
+        self.scenario_df = pd.read_csv(filepath, keep_default_na=False, na_values="", encoding="utf-8-sig")
 
         # Drop columns corresponding to scenarios that were removed.
         self.scenario_df = self.scenario_df.drop(scenarios_to_leave_out, axis=1)
@@ -988,14 +988,15 @@ class Unfold:
         matrix = self.populate_sparse_matrix()
 
         # Define a lambda function to replace zero values with 1.0
-        _ = lambda x: x if x != 0 else 1.0
+        _ = lambda x: 1.0 if x == 0.0 else x
 
         # Loop through each flow in self.factors and update the corresponding factor values
         for flow_id, factor in self.factors.items():
             c_name, c_prod, c_loc, c_unit = list(flow_id)[:4]
             s_name, s_prod, s_loc, s_cat, s_unit, s_type = list(flow_id)[4:]
 
-            # Get the indices of the consumer and supplier activities in the reversed_act_indices dictionary
+            # Get the indices of the consumer and supplier activities
+            # in the reversed_act_indices dictionary
             consumer_idx = self.reversed_acts_indices[
                 (
                     c_name,
@@ -1038,9 +1039,12 @@ class Unfold:
 
             supplier_idx = self.reversed_acts_indices[supplier_id]
 
-            # Update the factor values for each scenario by multiplying with the corresponding matrix value
+            # Update the factor values for each scenario
+            # by multiplying with the corresponding matrix value
+
             for scenario, val in factor.items():
-                factor[scenario] = val * _(matrix[consumer_idx, supplier_idx])
+                factor[scenario] = val * _(matrix[supplier_idx, consumer_idx])
+
 
         # Create a new scenario dataframe from the updated factors dictionary
         self.scenario_df = pd.DataFrame.from_dict(self.factors).T.reset_index()
@@ -1237,6 +1241,7 @@ class Unfold:
             self.scenario_df.to_csv(
                 filename,
                 index=False,
+                encoding="utf-8-sig",
             )
 
             print(f"Scenario difference file exported to {filename}")
