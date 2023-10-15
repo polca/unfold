@@ -2,7 +2,13 @@ from bw2data import databases
 from bw2io.importers.base_lci import LCIImporter
 
 
-class UnfoldExporter(LCIImporter):
+def write_brightway_database(data, name):
+    # Restore parameters to Brightway2 format
+    # which allows for uncertainty and comments
+    BW2UnfoldExporter(name, data).write_database()
+
+
+class BW2UnfoldExporter(LCIImporter):
     """
     Inherits from `LCIImporter` to
     allow existing databases to be

@@ -38,7 +38,14 @@ from .data_cleaning import (
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
 )
-from .export import UnfoldExporter
+
+try:
+    import bw_processing
+    from .brightway25_export import write_brightway_database
+
+except ImportError:
+    from .brightway2_export import write_brightway_database
+
 from .utils import HiddenPrints
 
 DIR_CACHED_DB = Path(__file__).parent / "cached_databases"
@@ -1219,7 +1226,7 @@ class Unfold:
                 check_duplicate_codes(database)
                 correct_fields_format(database, scenario)
                 print(f"Writing database for scenario {scenario}...")
-                UnfoldExporter(scenario, database).write_database()
+                write_brightway_database(scenario, database).write_database()
 
         else:
             source_db = [db for db in self.dependencies if db.get("type") == "source"]
@@ -1258,6 +1265,6 @@ class Unfold:
             correct_fields_format(
                 self.database, self.name or self.package.descriptor["name"]
             )
-            UnfoldExporter(
+            BW2UnfoldExporter(
                 self.name or self.package.descriptor["name"], self.database
             ).write_database()
