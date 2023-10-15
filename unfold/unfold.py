@@ -1266,6 +1266,6 @@ class Unfold:
             correct_fields_format(
                 self.database, self.name or self.package.descriptor["name"]
             )
-            BW2UnfoldExporter(
+            write_brightway_database(
                 self.name or self.package.descriptor["name"], self.database
             ).write_database()
