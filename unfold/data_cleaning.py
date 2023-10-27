@@ -22,6 +22,7 @@ def get_outdated_flows() -> dict:
 
     return flows
 
+
 def get_outdated_units() -> dict:
     """
     Retrieve a list of outdated flows from the outdated flows file.

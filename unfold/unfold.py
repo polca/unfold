@@ -493,7 +493,9 @@ class Unfold:
         else:
             # try first by searching for alternative units
             if key[4] in self.outdated_units:
-                print(f"found alternative unit: {key[4]}. Changing to {self.outdated_units[key[4]]}")
+                print(
+                    f"found alternative unit: {key[4]}. Changing to {self.outdated_units[key[4]]}"
+                )
                 if (
                     key[0],
                     key[1],
@@ -502,14 +504,16 @@ class Unfold:
                     self.outdated_units[key[4]],
                     key[5],
                 ) in self.dependency_mapping:
-                    return self.dependency_mapping[(
-                        key[0],
-                        key[1],
-                        key[2],
-                        key[3],
-                        self.outdated_units[key[4]],
-                        key[5],
-                    )]
+                    return self.dependency_mapping[
+                        (
+                            key[0],
+                            key[1],
+                            key[2],
+                            key[3],
+                            self.outdated_units[key[4]],
+                            key[5],
+                        )
+                    ]
 
             correct_id = self.find_correct_id(key)
             if correct_id is None:
@@ -1064,9 +1068,7 @@ class Unfold:
                 "production",
             )
             if consumer_key in self.reversed_acts_indices:
-                consumer_idx = self.reversed_acts_indices[
-                    consumer_key
-                ]
+                consumer_idx = self.reversed_acts_indices[consumer_key]
             else:
                 consumer_key = (
                     c_name,
@@ -1078,9 +1080,7 @@ class Unfold:
                 )
 
                 if consumer_key in self.reversed_acts_indices:
-                    consumer_idx = self.reversed_acts_indices[
-                        consumer_key
-                    ]
+                    consumer_idx = self.reversed_acts_indices[consumer_key]
                 else:
                     print("not found key for consumer ", consumer_key)
                     consumer_idx = 0
@@ -1112,7 +1112,6 @@ class Unfold:
                         s_type,
                     )
                 except TypeError:
-
                     supplier_key = (
                         s_name,
                         s_prod,
