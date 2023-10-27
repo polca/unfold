@@ -35,6 +35,7 @@ from .data_cleaning import (
     correct_fields_format,
     get_list_of_unique_datasets,
     get_outdated_flows,
+    get_outdated_units,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
 )
@@ -144,6 +145,7 @@ class Unfold:
         self.acts_indices = None
         self.reversed_acts_indices = None
         self.outdated_flows = get_outdated_flows()
+        self.outdated_units = get_outdated_units()
         self.path = path
         self.package = Package(self.path)
         self.dependencies = self.package.descriptor["dependencies"]
@@ -489,6 +491,26 @@ class Unfold:
         if key in self.dependency_mapping:
             return self.dependency_mapping[key]
         else:
+            # try first by searching for alternative units
+            if key[4] in self.outdated_units:
+                print(f"found alternative unit: {key[4]}. Changing to {self.outdated_units[key[4]]}")
+                if (
+                    key[0],
+                    key[1],
+                    key[2],
+                    key[3],
+                    self.outdated_units[key[4]],
+                    key[5],
+                ) in self.dependency_mapping:
+                    return self.dependency_mapping[(
+                        key[0],
+                        key[1],
+                        key[2],
+                        key[3],
+                        self.outdated_units[key[4]],
+                        key[5],
+                    )]
+
             correct_id = self.find_correct_id(key)
             if correct_id is None:
                 print(f"Could not find key: {key}")
@@ -623,6 +645,19 @@ class Unfold:
                 None,
             )
 
+            if consumer_idx is None:
+                consumer_idx = self.reversed_acts_indices.get(
+                    (
+                        c_name,
+                        c_prod,
+                        None,
+                        c_loc,
+                        self.outdated_units.get(c_unit, c_unit),
+                        "production",
+                    ),
+                    None,
+                )
+
             # Look up the index of the supplier activity in the reversed activities index.
             supplier_id = (
                 s_name,
@@ -636,6 +671,19 @@ class Unfold:
                 supplier_id,
                 None,
             )
+
+            if supplier_idx is None:
+                supplier_idx = self.reversed_acts_indices.get(
+                    (
+                        s_name,
+                        s_prod,
+                        s_cat,
+                        s_loc,
+                        self.outdated_units.get(s_unit, s_unit),
+                        s_type,
+                    ),
+                    None,
+                )
 
             # Multiply the appropriate element of the matrix by the scaling factor for the given scenario.
             # Use the lambda function defined above to avoid multiplying by zero.
@@ -1007,18 +1055,37 @@ class Unfold:
 
             # Get the indices of the consumer and supplier activities
             # in the reversed_act_indices dictionary
-            consumer_idx = self.reversed_acts_indices[
-                (
+            consumer_key = (
+                c_name,
+                c_prod,
+                None,
+                c_loc,
+                c_unit,
+                "production",
+            )
+            if consumer_key in self.reversed_acts_indices:
+                consumer_idx = self.reversed_acts_indices[
+                    consumer_key
+                ]
+            else:
+                consumer_key = (
                     c_name,
                     c_prod,
                     None,
                     c_loc,
-                    c_unit,
+                    self.outdated_units.get(c_unit, c_unit),
                     "production",
                 )
-            ]
 
-            supplier_id = (
+                if consumer_key in self.reversed_acts_indices:
+                    consumer_idx = self.reversed_acts_indices[
+                        consumer_key
+                    ]
+                else:
+                    print("not found key for consumer ", consumer_key)
+                    consumer_idx = 0
+
+            supplier_key = (
                 s_name,
                 s_prod,
                 s_cat,
@@ -1027,7 +1094,7 @@ class Unfold:
                 s_type,
             )
 
-            if supplier_id not in self.reversed_acts_indices:
+            if supplier_key not in self.reversed_acts_indices:
                 try:
                     (
                         s_name,
@@ -1036,7 +1103,7 @@ class Unfold:
                         s_cat,
                     ) = self.find_correct_id((s_name, s_prod, s_loc, s_cat))
 
-                    supplier_id = (
+                    supplier_key = (
                         s_name,
                         s_prod,
                         s_cat,
@@ -1045,9 +1112,20 @@ class Unfold:
                         s_type,
                     )
                 except TypeError:
-                    print("not found key for", supplier_id)
 
-            supplier_idx = self.reversed_acts_indices[supplier_id]
+                    supplier_key = (
+                        s_name,
+                        s_prod,
+                        s_cat,
+                        s_loc,
+                        self.outdated_units.get(s_unit, s_unit),
+                        s_type,
+                    )
+
+                    if supplier_key not in self.reversed_acts_indices:
+                        print("not found key for supplier", supplier_key)
+
+            supplier_idx = self.reversed_acts_indices[supplier_key]
 
             # Update the factor values for each scenario
             # by multiplying with the corresponding matrix value

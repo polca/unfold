@@ -9,6 +9,7 @@ from prettytable import PrettyTable
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 OUTDATED_FLOWS = DATA_DIR / "outdated_flows.yaml"
+OUTDATED_UNITS = DATA_DIR / "outdated_units.yaml"
 
 
 def get_outdated_flows() -> dict:
@@ -17,6 +18,16 @@ def get_outdated_flows() -> dict:
     """
 
     with open(OUTDATED_FLOWS, "r", encoding="utf-8") as stream:
+        flows = yaml.safe_load(stream)
+
+    return flows
+
+def get_outdated_units() -> dict:
+    """
+    Retrieve a list of outdated flows from the outdated flows file.
+    """
+
+    with open(OUTDATED_UNITS, "r", encoding="utf-8") as stream:
         flows = yaml.safe_load(stream)
 
     return flows

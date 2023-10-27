@@ -1,0 +1,46 @@
+# some units may be changed from one version of bw2io to another
+---
+
+a: year
+bq: Becquerel
+g: gram
+gj: gigajoule
+h: hour
+ha: hectare
+hr: hour
+kbq: kilo Becquerel
+kg: kilogram
+kgkm: kilogram kilometer
+kg*day: kilogram day
+kilogram day: kg*day
+km: kilometer
+kj: kilojoule
+kwh: kilowatt hour
+l: litre
+lu: livestock unit
+m: meter
+m*year: meter-year
+m2: square meter
+m2*year: square meter-year
+m2a: square meter-year
+m2y: square meter-year
+m3: cubic meter
+m3*year: cubic meter-year
+m3a: cubic meter-year
+m3y: cubic meter-year
+ma: meter-year
+metric ton*km: ton kilometer
+mj: megajoule
+my: meter-year
+nm3: normal cubic meter
+sm3: standard cubic meter
+p: unit
+personkm: person kilometer
+person*km: person kilometer
+pkm: person kilometer
+tonnes: ton
+tkm: ton kilometer
+vkm: vehicle kilometer
+kg sw: kilogram separative work unit
+km*year: kilometer-year
+wh: watt hour
