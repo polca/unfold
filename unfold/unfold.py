@@ -297,7 +297,8 @@ class Unfold:
 
         Notes:
         ------
-        This method extracts the source database for each dependency in the "dependencies" attribute of the current object, and builds a mapping for dependencies based on the extracted databases. The mapping is stored in the "dependency_mapping" attribute of the current object.
+        This method extracts the source database for each dependency in the "dependencies" attribute of the current object, and builds a mapping for dependencies based on the extracted databases.
+        The mapping is stored in the "dependency_mapping" attribute of the current object.
 
         If a dependency has a type of "source", the extracted database is also added to the "database" attribute of the current object.
 
@@ -491,36 +492,12 @@ class Unfold:
         if key in self.dependency_mapping:
             return self.dependency_mapping[key]
         else:
-            # try first by searching for alternative units
-            if key[4] in self.outdated_units:
-                print(
-                    f"found alternative unit: {key[4]}. Changing to {self.outdated_units[key[4]]}"
-                )
-                if (
-                    key[0],
-                    key[1],
-                    key[2],
-                    key[3],
-                    self.outdated_units[key[4]],
-                    key[5],
-                ) in self.dependency_mapping:
-                    return self.dependency_mapping[
-                        (
-                            key[0],
-                            key[1],
-                            key[2],
-                            key[3],
-                            self.outdated_units[key[4]],
-                            key[5],
-                        )
-                    ]
-
             correct_id = self.find_correct_id(key)
             if correct_id is None:
                 print(f"Could not find key: {key}")
                 return key
 
-            return self.dependency_mapping[self.find_correct_id(key)]
+            return self.dependency_mapping[correct_id]
 
     def get_exchange(
         self,
