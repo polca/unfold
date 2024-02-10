@@ -2,6 +2,7 @@
 Contains the Unfold class, to extract datapackage files.
 
 """
+
 import copy
 import os
 import pickle
@@ -526,11 +527,13 @@ class Unfold:
             "categories": cat,
             "type": flow_type,
             "amount": amount if flow_type != "production" else _(amount),
-            "input": self.fix_key((name, ref, loc, cat))
-            if flow_type == "biosphere"
-            else (
-                scenario_name,
-                self.fetch_exchange_code(name, ref, loc),
+            "input": (
+                self.fix_key((name, ref, loc, cat))
+                if flow_type == "biosphere"
+                else (
+                    scenario_name,
+                    self.fetch_exchange_code(name, ref, loc),
+                )
             ),
         }
 
