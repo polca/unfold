@@ -84,9 +84,11 @@ def write_formatted_data(name, data, filepath):
                             exc["amount"],
                             exc["unit"],
                             exc.get("location"),
-                            "::".join(list(exc.get("categories", [])))
-                            if exc["type"] == "biosphere"
-                            else None,
+                            (
+                                "::".join(list(exc.get("categories", [])))
+                                if exc["type"] == "biosphere"
+                                else None
+                            ),
                             exc["type"],
                             exc.get("product"),
                         ]
@@ -441,11 +443,13 @@ class Fold:
             "categories": cat,
             "type": flow_type,
             "amount": amount if flow_type != "production" else _(amount),
-            "input": self.dependency_mapping[(name, ref, loc, unit, cat)]
-            if flow_type == "biosphere"
-            else (
-                self.datapackage_name,
-                self.fetch_exchange_code(name, ref, loc, unit),
+            "input": (
+                self.dependency_mapping[(name, ref, loc, unit, cat)]
+                if flow_type == "biosphere"
+                else (
+                    self.datapackage_name,
+                    self.fetch_exchange_code(name, ref, loc, unit),
+                )
             ),
         }
 
