@@ -33,7 +33,7 @@ def package_files(directory):
 setup(
     name="unfold",
     version="1.1.7",
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     packages=packages,
     author="Romain Sacchi <romain.sacchi@psi.ch>",
     license=open("LICENSE").read(),
@@ -49,7 +49,7 @@ setup(
         "sparse",
         "scipy",
         "pyyaml",
-        "wurst>=0.3.4",
+        "wurst>=0.4.0",
         "pyprind",
     ],
     url="https://github.com/polca/premise",
