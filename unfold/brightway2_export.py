@@ -31,4 +31,5 @@ class BW2UnfoldExporter(LCIImporter):
             print(
                 f"Database {self.db_name} " f"already exists: it will be overwritten."
             )
+            del databases[self.db_name]
         super().write_database()
