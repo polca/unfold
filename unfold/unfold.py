@@ -22,7 +22,6 @@ from prettytable import PrettyTable
 from scipy import sparse as nsp
 from wurst import extract_brightway2_databases
 from wurst.linking import (
-    change_db_name,
     check_duplicate_codes,
     check_internal_linking,
     link_internal,
@@ -34,11 +33,11 @@ from .data_cleaning import (
     check_exchanges_input,
     check_for_duplicates,
     correct_fields_format,
-    get_list_of_unique_datasets,
     get_outdated_flows,
     get_outdated_units,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
+    change_db_name
 )
 
 try:
@@ -377,7 +376,11 @@ class Unfold:
 
         """
         self.factors = (
-            self.scenario_df.groupby("flow id").sum(numeric_only=True).to_dict("index")
+            self.scenario_df[[
+                c for c in self.scenario_df.columns if c not in [
+                    "to database",
+                ]
+            ]].groupby("flow id").sum(numeric_only=True).to_dict("index")
         )
 
     def store_datasets_metadata(self) -> None:
@@ -1118,6 +1121,7 @@ class Unfold:
         # Rename columns
         # and add new columns
         # for database information and metadata
+
         self.scenario_df.columns = [
             "to activity name",
             "to reference product",
@@ -1309,7 +1313,7 @@ class Unfold:
                 encoding="utf-8-sig",
             )
 
-            print(f"Scenario difference file exported to {filename}")
+            print(f"Scenario difference file exported to {filename}.")
             print("")
             print("Writing superstructure database...")
             change_db_name(self.database, self.name or self.package.descriptor["name"])

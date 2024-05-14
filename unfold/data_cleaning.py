@@ -408,3 +408,19 @@ def check_commonality_between_databases(original_db, scenario_db, db_name):
             "Could not find datasets in common between the reference database "
             f"and {db_name}."
         )
+
+def change_db_name(data, name):
+    """
+    Originally from `wurst.linking` module.
+    Change the database of all datasets in ``data`` to ``name``.
+
+    Raises errors if each dataset does not have exactly one reference production exchange."""
+
+    get_input_databases = lambda data: {ds.get("database") for ds in data}
+    old_names = get_input_databases(data)
+    for ds in data:
+        ds["database"] = name
+        for exc in ds["exchanges"]:
+            if exc.get("input") and exc["input"][0] in old_names:
+                exc["input"] = (name, exc["input"][1])
+    return data
