@@ -5,7 +5,7 @@ import bw2io
 from unfold import Unfold
 
 bw2data.projects.set_current("ei39")
-fp = "/Users/romain/Documents/datapackage_IMAGE_SSP2_Ammonia.zip"
+fp = "/Users/romain/Github/premise_transport/dev/export/datapackage/ammonia.zip"
 u = Unfold(fp)
 u.unfold(
     scenarios=[0, 1],
