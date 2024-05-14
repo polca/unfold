@@ -21,15 +21,12 @@ from datapackage import Package
 from prettytable import PrettyTable
 from scipy import sparse as nsp
 from wurst import extract_brightway2_databases
-from wurst.linking import (
-    check_duplicate_codes,
-    check_internal_linking,
-    link_internal,
-)
+from wurst.linking import check_duplicate_codes, check_internal_linking, link_internal
 
 from .data_cleaning import (
     add_biosphere_links,
     add_product_field_to_exchanges,
+    change_db_name,
     check_exchanges_input,
     check_for_duplicates,
     correct_fields_format,
@@ -37,7 +34,6 @@ from .data_cleaning import (
     get_outdated_units,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    change_db_name
 )
 
 try:
@@ -376,11 +372,19 @@ class Unfold:
 
         """
         self.factors = (
-            self.scenario_df[[
-                c for c in self.scenario_df.columns if c not in [
-                    "to database",
+            self.scenario_df[
+                [
+                    c
+                    for c in self.scenario_df.columns
+                    if c
+                    not in [
+                        "to database",
+                    ]
                 ]
-            ]].groupby("flow id").sum(numeric_only=True).to_dict("index")
+            ]
+            .groupby("flow id")
+            .sum(numeric_only=True)
+            .to_dict("index")
         )
 
     def store_datasets_metadata(self) -> None:

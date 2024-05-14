@@ -409,12 +409,14 @@ def check_commonality_between_databases(original_db, scenario_db, db_name):
             f"and {db_name}."
         )
 
+
 def change_db_name(data, name):
     """
     Originally from `wurst.linking` module.
     Change the database of all datasets in ``data`` to ``name``.
 
-    Raises errors if each dataset does not have exactly one reference production exchange."""
+    Raises errors if each dataset does not have exactly one reference production exchange.
+    """
 
     get_input_databases = lambda data: {ds.get("database") for ds in data}
     old_names = get_input_databases(data)
