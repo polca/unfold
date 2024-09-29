@@ -38,17 +38,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install python version
-        uses: gabrielfalcao/pyenv-action@v18
+        uses: gabrielfalcao/pyenv-action@v13
         with:
           default: 3.10.6
           command: pip install -U pip  # upgrade pip after installing python
 
       - name: create environment
-        run: pyenv local 3.10.6 && python -mvenv .venv390
+        run: pyenv local 3.10.6 && python -mvenv .venv310
 
       - name: Install dependencies
         run: |
-          pip install pysqlite
           pip install -r requirements.txt --upgrade pip
           pip install pytest
           pip install -e .
