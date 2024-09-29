@@ -1202,7 +1202,9 @@ class Unfold:
             (self.scenario_df["flow type"] == "biosphere"), "from database"
         ] = self.scenario_df.loc[
             (self.scenario_df["flow type"] == "biosphere"), "from key"
-        ].apply(lambda x: x[0] if x is not None else None)
+        ].apply(
+            lambda x: x[0] if x is not None else None
+        )
 
         self.scenario_df = self.scenario_df[
             [
