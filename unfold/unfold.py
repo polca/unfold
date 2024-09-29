@@ -1197,9 +1197,13 @@ class Unfold:
             self.name or self.package.descriptor["name"]
         )
 
+        # "from database" equals first item in "from key"
         self.scenario_df.loc[
             (self.scenario_df["flow type"] == "biosphere"), "from database"
-        ] = "biosphere3"
+        ] = self.scenario_df.loc[
+            (self.scenario_df["flow type"] == "biosphere"), "from key"
+        ].apply(lambda x: x[0] if x is not None else None)
+
         self.scenario_df = self.scenario_df[
             [
                 "from activity name",
