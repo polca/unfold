@@ -44,6 +44,7 @@ setup(
         "pandas",
         "bw2io",
         "bw2data",
+        "bw2calc",
         "prettytable",
         "datapackage",
         "sparse",
