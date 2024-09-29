@@ -40,7 +40,7 @@ setup(
     # Only if you have non-python data (CSV, etc.). Might need to change the directory name as well.
     include_package_data=True,
     install_requires=[
-        "numpy",
+        "numpy<2.0.0",
         "pandas",
         "bw2io",
         "bw2data",
