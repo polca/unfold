@@ -49,6 +49,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt --upgrade pip
+          pip install PyMySQL
           pip install pytest
           pip install -e .
 
