@@ -86,6 +86,7 @@ jobs:
           pip install
           build
           --user
+          --break-system-packages
 
       - name: Build a binary wheel and a source tarball
         run: >-
