@@ -34,6 +34,7 @@ from .data_cleaning import (
     get_outdated_units,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
+    clean_fields
 )
 
 try:
@@ -82,12 +83,12 @@ def get_list_unique_exchanges(databases: list) -> list:
         set(
             [
                 (
-                    exchange["name"],
-                    exchange.get("product"),
+                    exchange["name"].strip(),
+                    exchange.get("product").strip() if exchange.get("product") else None,
                     exchange.get("categories"),
-                    exchange.get("location"),
-                    exchange.get("unit"),
-                    exchange.get("type"),
+                    exchange.get("location").strip() if exchange.get("location") else None,
+                    exchange.get("unit").strip(),
+                    exchange.get("type").strip(),
                 )
                 for database in databases
                 for dataset in database
@@ -119,7 +120,7 @@ def check_cached_database(name) -> list:
 
     # extract the database, pickle it for next time and return it
     print("Cannot find cached database. Will create one now for next time...")
-    database = extract_brightway2_databases(name)
+    database = clean_fields(extract_brightway2_databases(name))
     pickle.dump(database, open(file_name, "wb"))
     return database
 
@@ -398,11 +399,11 @@ class Unfold:
         # store the metadata in a dictionary
         self.dict_meta = {
             (
-                dataset["name"],
-                dataset["reference product"],
+                dataset["name"].strip(),
+                dataset["reference product"].strip(),
                 None,
-                dataset["location"],
-                dataset["unit"],
+                dataset["location"].strip(),
+                dataset["unit"].strip(),
                 "production",
             ): {
                 key: values
@@ -575,20 +576,20 @@ class Unfold:
             for exc in ds["exchanges"]:
                 # Source activity
                 s = (
-                    exc["name"],
-                    exc.get("product"),
+                    exc["name"].strip(),
+                    exc.get("product").strip() if exc.get("product") else None,
                     exc.get("categories"),
-                    exc.get("location"),
-                    exc["unit"],
-                    exc["type"],
+                    exc.get("location").strip() if exc.get("location") else None,
+                    exc["unit"].strip(),
+                    exc["type"].strip(),
                 )
                 # Destination activity
                 c = (
-                    ds["name"],
-                    ds.get("reference product"),
+                    ds["name"].strip(),
+                    ds.get("reference product").strip() if ds.get("reference product") else None,
                     ds.get("categories"),
-                    ds.get("location"),
-                    ds["unit"],
+                    ds.get("location").strip() if ds.get("location") else None,
+                    ds["unit"].strip(),
                     "production",
                 )
                 # Add the exchange amount to the corresponding cell in the matrix
@@ -624,15 +625,16 @@ class Unfold:
             s_name, s_prod, s_loc, s_cat, s_unit, s_type = list(flow_id)[4:]
 
             # Look up the index of the consumer activity in the reversed activities index.
+            consumer_id = (
+                c_name,
+                c_prod,
+                None,
+                c_loc,
+                c_unit,
+                "production",
+            )
             consumer_idx = self.reversed_acts_indices.get(
-                (
-                    c_name,
-                    c_prod,
-                    None,
-                    c_loc,
-                    c_unit,
-                    "production",
-                ),
+                consumer_id,
                 None,
             )
 
@@ -683,9 +685,14 @@ class Unfold:
                     matrix[supplier_idx, consumer_idx]
                 )
             else:
-                print(
-                    f"Could not find activity for flow {flow_id} in scenario {scenario_name}."
-                )
+                if supplier_idx is None:
+                    print(
+                        f"Could not find supplier {supplier_id} in scenario {scenario_name}."
+                    )
+                if consumer_idx is None:
+                    print(
+                        f"Could not find consumer {consumer_id} in scenario {scenario_name}."
+                    )
 
         # Return the scaled matrix.
         return matrix

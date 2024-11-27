@@ -426,3 +426,28 @@ def change_db_name(data, name):
             if exc.get("input") and exc["input"][0] in old_names:
                 exc["input"] = (name, exc["input"][1])
     return data
+
+def clean_fields(database):
+
+    for dataset in database:
+        dataset["name"] = dataset["name"].strip()
+
+        if dataset.get("location"):
+            dataset["location"] = dataset["location"].strip()
+
+        if dataset.get("reference product"):
+            dataset["reference product"] = dataset["reference product"].strip()
+
+        dataset["unit"] = dataset["unit"].strip()
+
+        if "exchanges" in dataset:
+            for exchange in dataset["exchanges"]:
+                exchange["name"] = exchange["name"].strip()
+                exchange["unit"] = exchange["unit"].strip()
+                exchange["type"] = exchange["type"].strip()
+
+                if exchange["type"] in ["technosphere", "production"]:
+                    exchange["name"] = exchange["name"].strip()
+                    exchange["product"] = exchange["product"].strip()
+
+    return database
