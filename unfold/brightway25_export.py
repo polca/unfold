@@ -36,4 +36,4 @@ def write_brightway_database(data: list, name: str) -> None:
         print(f"Database {name} already exists: it will be overwritten.")
         del databases[name]
 
-    BW25Importer(name, data).write_database()
+    BW25UnfoldExporter(name, data).write_database()
