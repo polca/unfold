@@ -169,9 +169,9 @@ jobs:
         python-version: ["3.11"]
     steps:
       - uses: actions/checkout@v2
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.11
           channels: conda-forge,cmutel,konstantinstadler,haasad,pascallesage,romainsacchi
           allow-softlinks: true
           channel-priority: flexible
@@ -184,7 +184,7 @@ jobs:
         shell: bash -l {0}
 
         run: |
-          conda install -c romainsacchi unfold
+          conda install -v -c romainsacchi unfold
           conda update unfold
           conda install pytest
           pytest
