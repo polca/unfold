@@ -34,7 +34,7 @@ from .data_cleaning import (
     get_outdated_units,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    clean_fields
+    clean_fields,
 )
 
 try:
@@ -84,9 +84,17 @@ def get_list_unique_exchanges(databases: list) -> list:
             [
                 (
                     exchange["name"].strip(),
-                    exchange.get("product").strip() if exchange.get("product") else None,
+                    (
+                        exchange.get("product").strip()
+                        if exchange.get("product")
+                        else None
+                    ),
                     exchange.get("categories"),
-                    exchange.get("location").strip() if exchange.get("location") else None,
+                    (
+                        exchange.get("location").strip()
+                        if exchange.get("location")
+                        else None
+                    ),
                     exchange.get("unit").strip(),
                     exchange.get("type").strip(),
                 )
@@ -586,7 +594,11 @@ class Unfold:
                 # Destination activity
                 c = (
                     ds["name"].strip(),
-                    ds.get("reference product").strip() if ds.get("reference product") else None,
+                    (
+                        ds.get("reference product").strip()
+                        if ds.get("reference product")
+                        else None
+                    ),
                     ds.get("categories"),
                     ds.get("location").strip() if ds.get("location") else None,
                     ds["unit"].strip(),

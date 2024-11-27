@@ -427,6 +427,7 @@ def change_db_name(data, name):
                 exc["input"] = (name, exc["input"][1])
     return data
 
+
 def clean_fields(database):
 
     for dataset in database:
