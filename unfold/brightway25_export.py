@@ -3,6 +3,7 @@ from copy import copy
 
 from bw2data import Database, databases
 from bw2io.importers.base_lci import LCIImporter
+from wurst.linking import change_db_name, check_internal_linking, link_internal
 
 
 class BW25UnfoldExporter(LCIImporter):
