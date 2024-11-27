@@ -166,7 +166,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.9"]
+        python-version: ["3.11"]
     steps:
       - uses: actions/checkout@v2
       - uses: conda-incubator/setup-miniconda@v2
@@ -176,7 +176,7 @@ jobs:
           allow-softlinks: true
           channel-priority: strict
           auto-update-conda: true
-          conda-build-version: 3.21.4
+          conda-build-version: 3.26.1
           activate-environment: test
 
       - name: Pull distribution 📦 from Anaconda and test
@@ -187,6 +187,4 @@ jobs:
           conda install -c romainsacchi unfold
           conda update unfold
           conda install pytest
-          pytest -m "not ecoinvent"
-        env:
-          IAM_FILES_KEY: ${{ secrets.IAM_FILES_KEY }}
+          pytest
