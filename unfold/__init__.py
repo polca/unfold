@@ -1,5 +1,5 @@
 __all__ = ("Unfold", "Fold", "clear_cache")
-__version__ = (1, 2, 2)
+__version__ = (1, 2, 3)
 
 
 from .fold import Fold
