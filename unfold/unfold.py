@@ -1248,10 +1248,12 @@ class Unfold:
         # in any of the scenario columns
         # replace zeroes with ones
 
-        print(self.scenario_df.loc[
-            self.scenario_df["flow type"] == "production",
-            [s["name"] for s in self.scenarios],
-        ].sum())
+        print(
+            self.scenario_df.loc[
+                self.scenario_df["flow type"] == "production",
+                [s["name"] for s in self.scenarios],
+            ].sum()
+        )
 
         self.scenario_df.loc[
             self.scenario_df["flow type"] == "production",
@@ -1259,12 +1261,16 @@ class Unfold:
         ] = self.scenario_df.loc[
             self.scenario_df["flow type"] == "production",
             [s["name"] for s in self.scenarios],
-        ].replace(0, 1, regex=True)
+        ].replace(
+            0, 1, regex=True
+        )
 
-        print(self.scenario_df.loc[
-                  self.scenario_df["flow type"] == "production",
-                  [s["name"] for s in self.scenarios],
-              ].sum())
+        print(
+            self.scenario_df.loc[
+                self.scenario_df["flow type"] == "production",
+                [s["name"] for s in self.scenarios],
+            ].sum()
+        )
 
     def unfold(
         self,
