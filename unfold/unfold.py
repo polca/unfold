@@ -6,6 +6,7 @@ Contains the Unfold class, to extract datapackage files.
 import copy
 import os
 import pickle
+import unicodedata
 import uuid
 from ast import literal_eval
 from collections import defaultdict
@@ -34,7 +35,7 @@ from .data_cleaning import (
     get_outdated_units,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    clean_fields,
+    clean_fields
 )
 
 try:
@@ -631,6 +632,11 @@ class Unfold:
         # This is used to avoid multiplying by zero, which would result in a zero product.
         _ = lambda x: x if x != 0 else 1.0
 
+        def normalize_unicode_spaces(s: str) -> str:
+            s = unicodedata.normalize("NFKC", s)
+            # Convert all Unicode "space separators" to a normal ASCII space
+            return ''.join(' ' if unicodedata.category(ch) == 'Zs' else ch for ch in s)
+
         # Iterate over the scaling factors defined in `self.factors`.
         for flow_id, factor in self.factors.items():
             # Extract the components of the flow ID, which are used to look up the indices in the matrix.
@@ -699,12 +705,48 @@ class Unfold:
                 )
             else:
                 if supplier_idx is None:
-                    print(
-                        f"Could not find supplier {supplier_id} in scenario {scenario_name}."
+                    # convert unicode
+                    supplier_id = (
+                        normalize_unicode_spaces(supplier_id[0]).strip(),
+                        normalize_unicode_spaces(supplier_id[1]).strip(),
+                        supplier_id[2],
+                        normalize_unicode_spaces(supplier_id[3]).strip(),
+                        normalize_unicode_spaces(supplier_id[4]).strip(),
+                        normalize_unicode_spaces(supplier_id[5]).strip(),
                     )
+
+                    supplier_idx = self.reversed_acts_indices.get(
+                        supplier_id,
+                        None,
+                    )
+
+                    if supplier_idx is None:
+                        print(
+                            f"Could not find supplier {supplier_id} in scenario {scenario_name}."
+                        )
                 if consumer_idx is None:
-                    print(
-                        f"Could not find consumer {consumer_id} in scenario {scenario_name}."
+                    # convert unicode
+                    consumer_id = (
+                        normalize_unicode_spaces(consumer_id[0]).strip(),
+                        normalize_unicode_spaces(consumer_id[1]).strip(),
+                        consumer_id[2],
+                        normalize_unicode_spaces(consumer_id[3]).strip(),
+                        normalize_unicode_spaces(consumer_id[4]).strip(),
+                        normalize_unicode_spaces(consumer_id[5]).strip(),
+                    )
+                    consumer_idx = self.reversed_acts_indices.get(
+                        consumer_id,
+                        None,
+                    )
+
+                    if consumer_idx is None:
+                        print(
+                            f"Could not find consumer {consumer_id} in scenario {scenario_name}."
+                        )
+
+                if supplier_idx is not None and consumer_idx is not None:
+                    matrix[supplier_idx, consumer_idx] = factor[scenario_name] * _(
+                        matrix[supplier_idx, consumer_idx]
                     )
 
         # Return the scaled matrix.
