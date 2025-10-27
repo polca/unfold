@@ -46,8 +46,8 @@ except ImportError:
     from .brightway2_export import write_brightway_database
 
 from .utils import HiddenPrints
+from .filesystem_constants import DIR_CACHED_DB
 
-DIR_CACHED_DB = Path(__file__).parent / "cached_databases"
 
 
 def _c(value):
@@ -113,8 +113,6 @@ def check_cached_database(name) -> list:
     :return: the database
     """
 
-    # check that directory exists, otherwise create it
-    Path(DIR_CACHED_DB).mkdir(parents=True, exist_ok=True)
     bw2io_version = "".join(tuple(map(str, bw2io.__version__)))
     file_name = Path(DIR_CACHED_DB / f"cached_{name}_{bw2io_version}.pickle")
 
