@@ -143,19 +143,18 @@ jobs:
       - name: Publish distribution 📦 to Anaconda if Push
         if: github.ref == 'refs/heads/main'
         shell: bash -l {0}
-
         run: |
           PKG_NAME=unfold
           USER=romainsacchi
-          conda install anaconda-client
-          conda install conda-build
-          mkdir ~/conda-bld
+          conda install -y anaconda-client conda-build
+          mkdir -p ~/conda-bld
           conda config --set anaconda_upload no
           export CONDA_BLD_PATH=~/conda-bld
-          export VERSION=`date +%Y.%m.%d`
-          conda build "conda/" --old-build-string
-          ls $CONDA_BLD_PATH/noarch/
-          anaconda -t ${{ secrets.ANACONDA_CLOUD }} upload -u $USER $CONDA_BLD_PATH/noarch/$PKG_NAME-$VERSION-py_0.tar.bz2 --force
+          export VERSION=$(date +%Y.%m.%d)
+          conda build conda/ --old-build-string
+          ls -lah $CONDA_BLD_PATH/noarch/
+          anaconda -t ${{ secrets.ANACONDA_CLOUD }} upload -u $USER $CONDA_BLD_PATH/noarch/$PKG_NAME-$VERSION-py_0.conda --force
+  
 
   testconda:
     name: (${{ matrix.python-version }}, ${{ matrix.os }})
