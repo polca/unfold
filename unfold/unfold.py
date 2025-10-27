@@ -1079,19 +1079,19 @@ class Unfold:
             )
         )
 
-        self.scenario_df["to activity name"] = (
-            self.scenario_df["to activity name"].apply(lambda x: normalize_unicode(x))
-        )
-        self.scenario_df["to reference product"] = (
-            self.scenario_df["to reference product"].apply(lambda x: normalize_unicode(x))
-        )
+        self.scenario_df["to activity name"] = self.scenario_df[
+            "to activity name"
+        ].apply(lambda x: normalize_unicode(x))
+        self.scenario_df["to reference product"] = self.scenario_df[
+            "to reference product"
+        ].apply(lambda x: normalize_unicode(x))
 
-        self.scenario_df["from activity name"] = (
-            self.scenario_df["from activity name"].apply(lambda x: normalize_unicode(x))
-        )
-        self.scenario_df["from reference product"] = (
-            self.scenario_df["from reference product"].apply(lambda x: normalize_unicode(x))
-        )
+        self.scenario_df["from activity name"] = self.scenario_df[
+            "from activity name"
+        ].apply(lambda x: normalize_unicode(x))
+        self.scenario_df["from reference product"] = self.scenario_df[
+            "from reference product"
+        ].apply(lambda x: normalize_unicode(x))
 
     def format_superstructure_dataframe(self) -> None:
         """

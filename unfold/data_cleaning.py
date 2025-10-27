@@ -447,7 +447,9 @@ def clean_fields(database):
             dataset["location"] = normalize_unicode(dataset["location"])
 
         if dataset.get("reference product"):
-            dataset["reference product"] = normalize_unicode(dataset["reference product"])
+            dataset["reference product"] = normalize_unicode(
+                dataset["reference product"]
+            )
 
         dataset["unit"] = normalize_unicode(dataset["unit"])
 
