@@ -116,11 +116,13 @@ def check_cached_database(name) -> list:
     bw2io_version = "".join(tuple(map(str, bw2io.__version__)))
     file_name = Path(DIR_CACHED_DB / f"cached_{name}_{bw2io_version}.pickle")
 
+
     # check that file path leads to an existing file
     if file_name.exists() and len(bw2data.Database(name)) > 0:
         # check that the database has same length as the cached one
         database = pickle.load(open(file_name, "rb"))
         if len(database) == len(bw2data.Database(name)):
+            print(f"Found cached database for {name} in {DIR_CACHED_DB}. Loading it...")
             # return the cached database
             return pickle.load(open(file_name, "rb"))
 
@@ -128,6 +130,7 @@ def check_cached_database(name) -> list:
     print("Cannot find cached database. Will create one now for next time...")
     database = clean_fields(extract_brightway2_databases(name))
     pickle.dump(database, open(file_name, "wb"))
+    print(f"Cached database stored in {file_name}.")
     return database
 
 
