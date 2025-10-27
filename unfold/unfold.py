@@ -35,7 +35,7 @@ from .data_cleaning import (
     get_outdated_units,
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
-    clean_fields
+    clean_fields,
 )
 
 try:
@@ -48,7 +48,6 @@ except ImportError:
 
 from .utils import HiddenPrints
 from .filesystem_constants import DIR_CACHED_DB
-
 
 
 def _c(value):
@@ -116,7 +115,6 @@ def check_cached_database(name) -> list:
 
     bw2io_version = "".join(tuple(map(str, bw2io.__version__)))
     file_name = Path(DIR_CACHED_DB / f"cached_{name}_{bw2io_version}.pickle")
-
 
     # check that file path leads to an existing file
     if file_name.exists() and len(bw2data.Database(name)) > 0:
@@ -635,7 +633,7 @@ class Unfold:
         def normalize_unicode_spaces(s: str) -> str:
             s = unicodedata.normalize("NFKC", s)
             # Convert all Unicode "space separators" to a normal ASCII space
-            return ''.join(' ' if unicodedata.category(ch) == 'Zs' else ch for ch in s)
+            return "".join(" " if unicodedata.category(ch) == "Zs" else ch for ch in s)
 
         # Iterate over the scaling factors defined in `self.factors`.
         for flow_id, factor in self.factors.items():
