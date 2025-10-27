@@ -1,7 +1,9 @@
 import csv
+import unicodedata
 import uuid
 from pathlib import Path
 from typing import List, Tuple, Union
+import numpy as np
 
 import wurst as ws
 import yaml
@@ -428,27 +430,40 @@ def change_db_name(data, name):
     return data
 
 
+def normalize_unicode(s):
+    if s is None or (isinstance(s, float) and np.isnan(s)):
+        return None
+    s = unicodedata.normalize("NFKC", s)
+    s = "".join(" " if unicodedata.category(ch) == "Zs" else ch for ch in s)
+    return s.strip()
+
+
 def clean_fields(database):
 
     for dataset in database:
-        dataset["name"] = dataset["name"].strip()
+        dataset["name"] = normalize_unicode(dataset["name"])
 
         if dataset.get("location"):
-            dataset["location"] = dataset["location"].strip()
+            dataset["location"] = normalize_unicode(dataset["location"])
 
         if dataset.get("reference product"):
-            dataset["reference product"] = dataset["reference product"].strip()
+            dataset["reference product"] = normalize_unicode(dataset["reference product"])
 
-        dataset["unit"] = dataset["unit"].strip()
+        dataset["unit"] = normalize_unicode(dataset["unit"])
 
         if "exchanges" in dataset:
             for exchange in dataset["exchanges"]:
-                exchange["name"] = exchange["name"].strip()
-                exchange["unit"] = exchange["unit"].strip()
-                exchange["type"] = exchange["type"].strip()
+                exchange["name"] = normalize_unicode(exchange["name"])
+                exchange["unit"] = normalize_unicode(exchange["unit"])
+                exchange["type"] = normalize_unicode(exchange["type"])
 
                 if exchange["type"] in ["technosphere", "production"]:
-                    exchange["name"] = exchange["name"].strip()
-                    exchange["product"] = exchange["product"].strip()
+                    exchange["name"] = normalize_unicode(exchange["name"])
+                    if "product" in exchange:
+                        exchange["product"] = normalize_unicode(exchange["product"])
+                    if "reference product" in exchange:
+                        exchange["reference product"] = normalize_unicode(
+                            exchange["reference product"]
+                        )
 
     return database

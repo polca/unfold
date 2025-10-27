@@ -6,7 +6,6 @@ Contains the Unfold class, to extract datapackage files.
 import copy
 import os
 import pickle
-import unicodedata
 import uuid
 from ast import literal_eval
 from collections import defaultdict
@@ -36,6 +35,7 @@ from .data_cleaning import (
     remove_categories_for_technosphere_flows,
     remove_missing_fields,
     clean_fields,
+    normalize_unicode,
 )
 
 try:
@@ -630,11 +630,6 @@ class Unfold:
         # This is used to avoid multiplying by zero, which would result in a zero product.
         _ = lambda x: x if x != 0 else 1.0
 
-        def normalize_unicode_spaces(s: str) -> str:
-            s = unicodedata.normalize("NFKC", s)
-            # Convert all Unicode "space separators" to a normal ASCII space
-            return "".join(" " if unicodedata.category(ch) == "Zs" else ch for ch in s)
-
         # Iterate over the scaling factors defined in `self.factors`.
         for flow_id, factor in self.factors.items():
             # Extract the components of the flow ID, which are used to look up the indices in the matrix.
@@ -705,12 +700,12 @@ class Unfold:
                 if supplier_idx is None:
                     # convert unicode
                     supplier_id = (
-                        normalize_unicode_spaces(supplier_id[0]).strip(),
-                        normalize_unicode_spaces(supplier_id[1]).strip(),
+                        normalize_unicode(supplier_id[0]),
+                        normalize_unicode(supplier_id[1]),
                         supplier_id[2],
-                        normalize_unicode_spaces(supplier_id[3]).strip(),
-                        normalize_unicode_spaces(supplier_id[4]).strip(),
-                        normalize_unicode_spaces(supplier_id[5]).strip(),
+                        normalize_unicode(supplier_id[3]),
+                        normalize_unicode(supplier_id[4]),
+                        normalize_unicode(supplier_id[5]),
                     )
 
                     supplier_idx = self.reversed_acts_indices.get(
@@ -725,12 +720,12 @@ class Unfold:
                 if consumer_idx is None:
                     # convert unicode
                     consumer_id = (
-                        normalize_unicode_spaces(consumer_id[0]).strip(),
-                        normalize_unicode_spaces(consumer_id[1]).strip(),
+                        normalize_unicode(consumer_id[0]),
+                        normalize_unicode(consumer_id[1]),
                         consumer_id[2],
-                        normalize_unicode_spaces(consumer_id[3]).strip(),
-                        normalize_unicode_spaces(consumer_id[4]).strip(),
-                        normalize_unicode_spaces(consumer_id[5]).strip(),
+                        normalize_unicode(consumer_id[3]),
+                        normalize_unicode(consumer_id[4]),
+                        normalize_unicode(consumer_id[5]),
                     )
                     consumer_idx = self.reversed_acts_indices.get(
                         consumer_id,
@@ -1082,6 +1077,20 @@ class Unfold:
                 self.scenario_df["from unit"],
                 self.scenario_df["flow type"],
             )
+        )
+
+        self.scenario_df["to activity name"] = (
+            self.scenario_df["to activity name"].apply(lambda x: normalize_unicode(x))
+        )
+        self.scenario_df["to reference product"] = (
+            self.scenario_df["to reference product"].apply(lambda x: normalize_unicode(x))
+        )
+
+        self.scenario_df["from activity name"] = (
+            self.scenario_df["from activity name"].apply(lambda x: normalize_unicode(x))
+        )
+        self.scenario_df["from reference product"] = (
+            self.scenario_df["from reference product"].apply(lambda x: normalize_unicode(x))
         )
 
     def format_superstructure_dataframe(self) -> None:

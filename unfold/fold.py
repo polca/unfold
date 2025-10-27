@@ -23,6 +23,7 @@ from .data_cleaning import (
     DATA_DIR,
     check_commonality_between_databases,
     check_mandatory_fields,
+    clean_fields
 )
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
@@ -224,7 +225,7 @@ class Fold:
         self.identify_dependencies(databases_to_fold)
 
         print("Extracting source database...")
-        source_database_extracted = self.extract_database(source_database)
+        source_database_extracted = clean_fields(self.extract_database(source_database))
         self.source = {
             "name": source_database,
             "database": source_database_extracted,
@@ -239,7 +240,7 @@ class Fold:
 
         print("Extracting databases to fold...")
         for database in databases_to_fold:
-            extracted_database = self.extract_database(database)
+            extracted_database = clean_fields(self.extract_database(database))
             extracted_database = check_mandatory_fields(extracted_database)
             check_commonality_between_databases(
                 source_database_extracted, extracted_database, database
@@ -265,7 +266,7 @@ class Fold:
                         f"It will be extracted automatically."
                     )
                     self.build_mapping_for_dependencies(
-                        self.extract_database(dependency)
+                        clean_fields(self.extract_database(dependency))
                     )
                 else:
                     raise ValueError(
