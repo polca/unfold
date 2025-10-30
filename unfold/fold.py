@@ -23,7 +23,7 @@ from .data_cleaning import (
     DATA_DIR,
     check_commonality_between_databases,
     check_mandatory_fields,
-    clean_fields
+    clean_fields,
 )
 
 DIR_DATAPACKAGE_TEMP = DATA_DIR / "temp"
