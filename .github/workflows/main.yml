@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Black formatting
         uses: lgeiger/black-action@v1.0.1
@@ -29,44 +29,63 @@ jobs:
           git push
 
   build:
-    runs-on: ${{matrix.os}}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-
+    runs-on: ${{ matrix.os }}
     needs: clean
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        include:
+          - name: "legacy (bw2io<0.9.0, bw2data<4.0.0)"
+            py: "3.10"
+            constraints: |
+              bw2io<0.9.0
+              bw2data<4.0.0
+          - name: "modern (bw2io>=0.9.0, bw2data>=4.0.0)"
+            py: "3.10"
+            constraints: |
+              bw2io>=0.9.0
+              bw2data>=4.0.0
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system dependencies for pyenv
-        run: |
-          sudo apt-get update
-          sudo apt-get install build-essential zlib1g-dev libffi-dev libssl-dev \
-                               libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev \
-                               libncurses-dev tk-dev
-
-      - name: Install python version
-        uses: gabrielfalcao/pyenv-action@v18
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          default: 3.10.6
-          command: pip install -U pip  # upgrade pip after installing python
+          python-version: ${{ matrix.py }}
 
-      - name: create environment
-        run: pyenv local 3.10.6 && python -mvenv .venv390
+      - name: Upgrade pip
+        run: python -m pip install -U pip
 
-      - name: Install dependencies
+      - name: Write constraints
         run: |
-          pip install -e .
+          cat > constraints.txt <<'EOF'
+          ${{ matrix.constraints }}
+          EOF
+          echo "Using constraints:"
+          cat constraints.txt
+
+      - name: Install package + deps under constraints
+        run: |
+          pip install -e . -c constraints.txt
           pip install pytest
-          
 
-      - name: Run tests
+      - name: Verify pinned versions
         run: |
-          pytest
+          python - <<'PY'
+          import bw2io, bw2data
+          print("bw2io:", bw2io.__version__)
+          print("bw2data:", bw2data.__version__)
+          PY
+          pip check
 
+      - name: Run tests (${{ matrix.name }})
         env:
           GITHUB_TOKEN: ${{ secrets.COVERALLS }}
           IAM_FILES_KEY: ${{ secrets.IAM_FILES_KEY }}
+        run: pytest
+
 
   Pypi:
     runs-on: ubuntu-latest
@@ -154,7 +173,6 @@ jobs:
           conda build conda/ --old-build-string
           ls -lah $CONDA_BLD_PATH/noarch/
           anaconda -t ${{ secrets.ANACONDA_CLOUD }} upload -u $USER $CONDA_BLD_PATH/noarch/$PKG_NAME-$VERSION-py_0.conda --force
-  
 
   testconda:
     name: (${{ matrix.python-version }}, ${{ matrix.os }})
@@ -181,7 +199,6 @@ jobs:
       - name: Pull distribution 📦 from Anaconda and test
         if: github.ref == 'refs/heads/main'
         shell: bash -l {0}
-
         run: |
           conda install -v -c romainsacchi unfold
           conda update unfold
