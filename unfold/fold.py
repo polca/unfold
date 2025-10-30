@@ -104,6 +104,7 @@ def write_formatted_data(name, data, filepath):
 
     return filepath
 
+
 def fill_first_slice_diagonal_with_max(S: sparse.COO):
     """
     S: sparse.COO of shape (n, n, p), stacked along the last axis.
@@ -116,7 +117,7 @@ def fill_first_slice_diagonal_with_max(S: sparse.COO):
     n = min(S.shape[0], S.shape[1])
 
     # --- First slice (the one to fix) ---
-    A0 = S[..., 0]                             # (n, n) sparse.COO
+    A0 = S[..., 0]  # (n, n) sparse.COO
     c0 = A0.coords
     d0 = A0.data
 
@@ -128,14 +129,14 @@ def fill_first_slice_diagonal_with_max(S: sparse.COO):
 
     # --- Other slices: compute max along last axis at (i, i, :) ---
     if S.shape[-1] > 1:
-        O = S[..., 1:]                         # (n, n, p-1) sparse.COO
+        O = S[..., 1:]  # (n, n, p-1) sparse.COO
         co = O.coords
         do = O.data
 
         # Grab entries that are on the main diagonal (i == j) in any slice
         md = (co[0] < n) & (co[1] < n) & (co[0] == co[1])
-        ii = co[0, md]                         # diagonal index i
-        vals = do[md]                          # value at (i, i, k)
+        ii = co[0, md]  # diagonal index i
+        vals = do[md]  # value at (i, i, k)
 
         # Per-i maximum across slices (missing => 0 by construction)
         max_diag_other = np.zeros(n, dtype=vals.dtype if vals.size else curr_diag.dtype)
@@ -146,7 +147,7 @@ def fill_first_slice_diagonal_with_max(S: sparse.COO):
         max_diag_other = np.zeros(n, dtype=curr_diag.dtype)
 
     # --- Decide which diagonal entries to fill (zeros in first slice) ---
-    to_fill_mask = (curr_diag == 0)
+    to_fill_mask = curr_diag == 0
     changed_idx = np.nonzero(to_fill_mask)[0]
     changed_vals = max_diag_other[changed_idx]
 
