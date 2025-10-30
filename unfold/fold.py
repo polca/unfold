@@ -17,6 +17,7 @@ import sparse
 from datapackage import Package
 from prettytable import PrettyTable
 from scipy import sparse as nsp
+import numpy as np
 
 from . import __version__
 from .data_cleaning import (
@@ -102,6 +103,70 @@ def write_formatted_data(name, data, filepath):
             writer.writerow(line)
 
     return filepath
+
+def fill_first_slice_diagonal_with_max(S: sparse.COO):
+    """
+    S: sparse.COO of shape (n, n, p), stacked along the last axis.
+    Returns:
+      S_filled: same shape as S, with diagonal of first slice fixed where zeros
+      changed_idx: 1D array of diagonal indices i that were modified
+      changed_vals: values inserted at (i, i, 0)
+    """
+    assert S.ndim == 3, "Expected a 3D sparse array (n, n, p)."
+    n = min(S.shape[0], S.shape[1])
+
+    # --- First slice (the one to fix) ---
+    A0 = S[..., 0]                             # (n, n) sparse.COO
+    c0 = A0.coords
+    d0 = A0.data
+
+    # Current diagonal values in the first slice (missing -> 0)
+    curr_diag = np.zeros(n, dtype=d0.dtype if d0.size else S.data.dtype)
+    m0 = (c0[0] < n) & (c0[1] < n) & (c0[0] == c0[1])
+    if m0.any():
+        curr_diag[c0[0, m0]] = d0[m0]
+
+    # --- Other slices: compute max along last axis at (i, i, :) ---
+    if S.shape[-1] > 1:
+        O = S[..., 1:]                         # (n, n, p-1) sparse.COO
+        co = O.coords
+        do = O.data
+
+        # Grab entries that are on the main diagonal (i == j) in any slice
+        md = (co[0] < n) & (co[1] < n) & (co[0] == co[1])
+        ii = co[0, md]                         # diagonal index i
+        vals = do[md]                          # value at (i, i, k)
+
+        # Per-i maximum across slices (missing => 0 by construction)
+        max_diag_other = np.zeros(n, dtype=vals.dtype if vals.size else curr_diag.dtype)
+        if ii.size:
+            np.maximum.at(max_diag_other, ii, vals)
+    else:
+        # No other slices; nothing to pull from
+        max_diag_other = np.zeros(n, dtype=curr_diag.dtype)
+
+    # --- Decide which diagonal entries to fill (zeros in first slice) ---
+    to_fill_mask = (curr_diag == 0)
+    changed_idx = np.nonzero(to_fill_mask)[0]
+    changed_vals = max_diag_other[changed_idx]
+
+    # If you only want to write when there is a positive/nonzero max, uncomment:
+    # keep = changed_vals != 0
+    # changed_idx = changed_idx[keep]
+    # changed_vals = changed_vals[keep]
+
+    # --- Create a sparse diagonal with the replacement values and add it ---
+    if changed_idx.size:
+        patch = sparse.COO((changed_vals, (changed_idx, changed_idx)), shape=A0.shape)
+        A0_filled = A0 + patch
+    else:
+        A0_filled = A0
+
+    # --- Rebuild the stacked tensor (first slice replaced) ---
+    slices = [A0_filled] + [S[..., k] for k in range(1, S.shape[-1])]
+    S_filled = sparse.stack(slices, axis=-1)
+
+    return S_filled
 
 
 class Fold:
@@ -724,6 +789,7 @@ class Fold:
         sparse_matrix = sparse.stack(
             [sparse.COO(x) for x in matrices.values()], axis=-1
         )
+        sparse_matrix = fill_first_slice_diagonal_with_max(sparse_matrix)
         indices = sparse.argwhere(sparse_matrix.sum(-1).T != 0)
         indices = list(map(tuple, indices))
 
