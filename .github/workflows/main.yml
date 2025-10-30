@@ -53,7 +53,7 @@ jobs:
           from packaging.version import Version
           import pkg_resources
 
-          def ver(mod, dist_name):
+          def norm_version(mod, dist_name):
             v = getattr(mod, "__version__", None)
             if isinstance(v, tuple):
               v = ".".join(map(str, v))
@@ -62,13 +62,18 @@ jobs:
             return str(v)
 
           import bw2io, bw2data
-          v_io = ver(bw2io, "bw2io")
-          v_data = ver(bw2data, "bw2data")
+          v_io = norm_version(bw2io, "bw2io")
+          v_data = norm_version(bw2data, "bw2data")
           print("bw2io:", v_io)
           print("bw2data:", v_data)
 
+          # ---- LEGACY JOB ----
+          assert Version(v_io) < Version("0.9.0"),  f"bw2io is not <0.9.0 (got {v_io})"
+          assert Version(v_data) < Version("4.0.0"), f"bw2data is not <4.0.0 (got {v_data})"
+
           PY
           pip check
+      
 
       - name: Run tests (legacy)
         env:
@@ -99,18 +104,32 @@ jobs:
         run: |
           pip install -e . -c constraints.txt
           pip install pytest
-      - name: Verify pinned versions & assert modern track
+      - name: Verify pinned versions & assert track
         run: |
           python - <<'PY'
-          import sys
-          import bw2io, bw2data
           from packaging.version import Version
-          print("bw2io:", bw2io.__version__)
-          print("bw2data:", bw2data.__version__)
-          assert Version(bw2io.__version__) >= Version("0.9.0"), "bw2io is not >=0.9.0"
-          assert Version(bw2data.__version__) >= Version("4.0.0"), "bw2data is not >=4.0.0"
+          import pkg_resources
+
+          def norm_version(mod, dist_name):
+            v = getattr(mod, "__version__", None)
+            if isinstance(v, tuple):
+              v = ".".join(map(str, v))
+            if not v:
+              v = pkg_resources.get_distribution(dist_name).version
+            return str(v)
+
+          import bw2io, bw2data
+          v_io = norm_version(bw2io, "bw2io")
+          v_data = norm_version(bw2data, "bw2data")
+          print("bw2io:", v_io)
+          print("bw2data:", v_data)
+
+          # ---- MODERN JOB ----
+          assert Version(v_io) >= Version("0.9.0"),  f"bw2io is not >=0.9.0 (got {v_io})"
+          assert Version(v_data) >= Version("4.0.0"), f"bw2data is not >=4.0.0 (got {v_data})"
           PY
           pip check
+
       - name: Run tests (modern)
         env:
           GITHUB_TOKEN: ${{ secrets.COVERALLS }}
