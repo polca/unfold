@@ -49,7 +49,10 @@ def test_db_reproduction():
         descriptions=["this is db A", "this is db B"],
     )
 
-    Unfold("test.zip").unfold(dependencies={"reference_database": "reference_database"})
+    print(f"List of databases in project: {bw2data.databases}")
+    db = [d for d in bw2data.databases if not "biosphere" in d][0]
+
+    Unfold("test.zip").unfold(dependencies={"reference_database": db})
 
     lca = bw2calc.LCA({bw2data.get_activity(("db A", "activity A")): 1})
     lca.lci()
