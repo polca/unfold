@@ -52,6 +52,7 @@ def test_db_reproduction():
     print(f"List of databases in project: {bw2data.databases}")
 
     db = bw2data.Database("reference_database")
+    print(f" Length of {db.name} is {len(db)}")
 
     Unfold("test.zip").unfold(dependencies={"reference_database": db.name})
 
