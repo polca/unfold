@@ -20,7 +20,7 @@ import sparse
 from datapackage import Package
 from prettytable import PrettyTable
 from scipy import sparse as nsp
-from wurst import extract_brightway2_databases
+from wurst.brightway.extract_database import extract_brightway2_databases
 from wurst.linking import check_duplicate_codes, check_internal_linking, link_internal
 
 from .data_cleaning import (
@@ -127,7 +127,9 @@ def check_cached_database(name) -> list:
 
     # extract the database, pickle it for next time and return it
     print("Cannot find cached database. Will create one now for next time...")
-    database = clean_fields(extract_brightway2_databases(name))
+    print(f"Extracting database {name}...")
+    db = extract_brightway2_databases(name)
+    database = clean_fields(db)
     pickle.dump(database, open(file_name, "wb"))
     print(f"Cached database stored in {file_name}.")
     return database

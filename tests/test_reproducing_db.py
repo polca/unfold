@@ -8,6 +8,10 @@ from unfold import Fold, Unfold
 
 
 def test_db_reproduction():
+
+    if "test" in bw2data.projects:
+        bw2data.projects.delete_project("test", delete_dir=True)
+
     bw2data.projects.set_current("test")
     bw2io.create_default_biosphere3()
 
