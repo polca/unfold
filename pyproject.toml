@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unfold"
-version = "1.2.3"
+version = "1.2.4"
 description = "Unpacks LCA scenario databases."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
